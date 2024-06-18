@@ -2,14 +2,14 @@ cmake_minimum_required(VERSION 3.13)
 
 include(pico_sdk_import.cmake)
 
-project(blink C CXX ASM)
+project(main C CXX ASM)
 set(CMAKE_C STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
 pico_sdk_init()
 
 add_executable(${CMAKE_PROJECT_NAME}
-    src/blink.c
+    src/main.c
 )
 
 FILE(GLOB FreeRTOS_src FreeRTOS-Kernel/*.c)
@@ -26,8 +26,7 @@ target_include_directories( FreeRTOS PUBLIC
 						FreeRTOS-Kernel/portable/GCC/ARM_CM0)
 
 
-target_link_libraries(${CMAKE_PROJECT_NAME} 
-					pico_cyw43_arch_lwip_threadsafe_background 
+target_link_libraries(${CMAKE_PROJECT_NAME}  
 					pico_stdlib
 					hardware_gpio
 					FreeRTOS)

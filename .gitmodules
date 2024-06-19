@@ -1,0 +1,3 @@
+[submodule "FreeRTOS-LTS"]
+	path = FreeRTOS-LTS
+	url = https://github.com/FreeRTOS/FreeRTOS-LTS.git

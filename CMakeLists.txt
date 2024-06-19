@@ -12,18 +12,18 @@ add_executable(${CMAKE_PROJECT_NAME}
     src/main.c
 )
 
-FILE(GLOB FreeRTOS_src FreeRTOS-Kernel/*.c)
+FILE(GLOB FreeRTOS_src FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel/*.c)
 
 add_library( FreeRTOS STATIC
 			${FreeRTOS_src}
-			FreeRTOS-Kernel/portable/GCC/ARM_CM0/port.c
-			FreeRTOS-Kernel/portable/MemMang/heap_4.c)
+			FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel/portable/GCC/ARM_CM0/port.c
+			FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel/portable/MemMang/heap_4.c)
 
 
 target_include_directories( FreeRTOS PUBLIC
-						FreeRTOS-Kernel/include
+						FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel/include
 						include/
-						FreeRTOS-Kernel/portable/GCC/ARM_CM0)
+						FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel/portable/GCC/ARM_CM0)
 
 
 target_link_libraries(${CMAKE_PROJECT_NAME}  

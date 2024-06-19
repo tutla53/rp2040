@@ -29,6 +29,7 @@ target_include_directories( FreeRTOS PUBLIC
 target_link_libraries(${CMAKE_PROJECT_NAME}  
 					pico_stdlib
 					hardware_gpio
+					hardware_adc
 					FreeRTOS)
 
 pico_add_extra_outputs(${CMAKE_PROJECT_NAME})

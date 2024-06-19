@@ -5,6 +5,7 @@ include(pico_sdk_import.cmake)
 project(main C CXX ASM)
 set(CMAKE_C STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
+set(PICO_SDK_FREERTOS_SOURCE FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel)
 
 pico_sdk_init()
 
@@ -12,25 +13,26 @@ add_executable(${CMAKE_PROJECT_NAME}
     src/main.c
 )
 
-FILE(GLOB FreeRTOS_src FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel/*.c)
+FILE(GLOB FreeRTOS_src ${PICO_SDK_FREERTOS_SOURCE}/*.c)
 
-add_library( FreeRTOS STATIC
-			${FreeRTOS_src}
-			FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel/portable/GCC/ARM_CM0/port.c
-			FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel/portable/MemMang/heap_4.c)
+add_library(FreeRTOS STATIC
+			${FreeRTOS_src} 	
+			${PICO_SDK_FREERTOS_SOURCE}/portable/GCC/ARM_CM0/port.c
+			${PICO_SDK_FREERTOS_SOURCE}/portable/MemMang/heap_4.c)
 
 
 target_include_directories( FreeRTOS PUBLIC
-						FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel/include
-						include/
-						FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel/portable/GCC/ARM_CM0)
+							${PICO_SDK_FREERTOS_SOURCE}/include
+							${PICO_SDK_FREERTOS_SOURCE}/portable/GCC/ARM_CM0
+							include/)
+							
 
 
-target_link_libraries(${CMAKE_PROJECT_NAME}  
-					pico_stdlib
-					hardware_gpio
-					hardware_adc
-					FreeRTOS)
+target_link_libraries(	${CMAKE_PROJECT_NAME}  
+						pico_stdlib
+						hardware_gpio
+						hardware_adc
+						FreeRTOS)
 
 pico_add_extra_outputs(${CMAKE_PROJECT_NAME})
 pico_enable_stdio_usb(${CMAKE_PROJECT_NAME} 1)

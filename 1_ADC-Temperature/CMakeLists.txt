@@ -24,7 +24,7 @@ add_library(FreeRTOS STATIC
 target_include_directories( FreeRTOS PUBLIC
 							${PICO_SDK_FREERTOS_SOURCE}/include
 							${PICO_SDK_FREERTOS_SOURCE}/portable/GCC/ARM_CM0
-							include/)
+							lib/)
 							
 
 

@@ -3,6 +3,8 @@
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/adc.h"
+#include "hardware/pwm.h"
+#include "hardware/irq.h"
 
 #include "FreeRTOS.h"
 #include "FreeRTOSConfig.h"
@@ -10,9 +12,11 @@
 #include "semphr.h"
 #include "queue.h"
 
-#define mainECHO_TASK_PRIORITY (tskIDLE_PRIORITY + 1)
+#include "Servo.h"
 
-const uint LED_PIN = PICO_DEFAULT_LED_PIN;
+#define mainECHO_TASK_PRIORITY (tskIDLE_PRIORITY + 1)
+#define SERVO_PIN	20
+#define LED_PIN  PICO_DEFAULT_LED_PIN
 
 static QueueHandle_t xQueueOut = NULL, xQueueIn = NULL;
 static SemaphoreHandle_t h_mutex;
@@ -25,11 +29,12 @@ void vApplicationStackOverflowHook(TaskHandle_t *pxTask,signed portCHAR *pcTaskN
 	for(;;);
 }
 
-typedef struct Message {
+typedef struct {
 	float temp;
 	TickType_t elapsed;
 } Message_t;
 
+Servo s1;
 /* mutex_lock()/mutex_unlock()
 	- prevents competing tasks from printing in the middle of our own line of text
 */
@@ -84,8 +89,7 @@ static void main_task (void *args) {
 	/*It will be changed to ISR*/
 	(void)args;
 	Message_t send_value;
-	uint32_t del = 500;
-	bool out_led = 1;
+	uint32_t del = 50;
 	send_value.temp = 0;
 	send_value.elapsed = 0;
 
@@ -95,14 +99,13 @@ static void main_task (void *args) {
 		/*Receive delay from USB*/
 		xQueueReceive(xQueueIn, &del, 0U);
 
-		/*Toggle LED*/
-		gpio_put(LED_PIN, out_led); 
-		out_led = !(out_led);
+		/*servo*/
+		ServoPosition(&s1, del);
 
 		/*Read Temperature*/
 		send_value.temp = get_temp();
 
-		vTaskDelay(pdMS_TO_TICKS(del));
+		vTaskDelay(pdMS_TO_TICKS(10));
 
 		send_value.elapsed = xTaskGetTickCount()-t0;
 		
@@ -115,10 +118,14 @@ static void output_task (void *args) {
 	(void)args;
 	TickType_t t0 = 0;
 	Message_t received_value;
+	bool out_led = 1;
 
 	for (;;) {
 		t0 = xTaskGetTickCount();
 		xQueueReceive(xQueueOut, &received_value, portMAX_DELAY);
+		gpio_put(LED_PIN, out_led);
+		out_led = !out_led;
+		vTaskDelay(pdMS_TO_TICKS(100));
 		
 		mutex_lock();
 		printf("T %.2f, main = %lu, usb = %lu\n", 
@@ -126,11 +133,14 @@ static void output_task (void *args) {
 				received_value.elapsed, 
 				xTaskGetTickCount()-t0);
 		mutex_unlock();
+		
 	}
 }
 
 int main() {
 	GPIO_SETUP_INIT();
+    ServoInit(&s1, SERVO_PIN, false);
+    ServoOn(&s1);
 	
 	xQueueOut 	= xQueueCreate(10, sizeof(Message_t));
 	xQueueIn  	= xQueueCreate(10, sizeof(uint32_t));

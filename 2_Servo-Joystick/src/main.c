@@ -14,7 +14,7 @@
 
 #include "Servo.h"
 
-#define mainECHO_TASK_PRIORITY 	(tskIDLE_PRIORITY + 1)
+#define mainECHO_TASK_PRIORITY	(tskIDLE_PRIORITY + 1)
 #define SERVO_PIN				20
 #define LED_PIN  				PICO_DEFAULT_LED_PIN
 

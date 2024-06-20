@@ -18,8 +18,9 @@ git clone --recurse-submodules https://github.com/tutla53/robotic-arm-rp2040.git
 echo "export PICO_SDK_PATH=$HOME/pico-sdk" >> ~/.bashrc
 source ~/.bashrc
 ```
-3. Create the build folder and compile the software:
+3. Go to the project directory, create the build folder, and compile the software:
 ```bash
+cd {project_directory}
 mkdir build
 cd build
 cmake ..

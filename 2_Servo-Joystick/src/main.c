@@ -14,9 +14,9 @@
 
 #include "Servo.h"
 
-#define mainECHO_TASK_PRIORITY (tskIDLE_PRIORITY + 1)
-#define SERVO_PIN	20
-#define LED_PIN  PICO_DEFAULT_LED_PIN
+#define mainECHO_TASK_PRIORITY 	(tskIDLE_PRIORITY + 1)
+#define SERVO_PIN				20
+#define LED_PIN  				PICO_DEFAULT_LED_PIN
 
 static QueueHandle_t xQueueOut = NULL, xQueueIn = NULL;
 static SemaphoreHandle_t h_mutex;
@@ -89,7 +89,7 @@ static void main_task (void *args) {
 	/*It will be changed to ISR*/
 	(void)args;
 	Message_t send_value;
-	uint32_t del = 50;
+	uint32_t pos = 50;
 	send_value.temp = 0;
 	send_value.elapsed = 0;
 
@@ -97,10 +97,10 @@ static void main_task (void *args) {
 		TickType_t t0 = xTaskGetTickCount();
 
 		/*Receive delay from USB*/
-		xQueueReceive(xQueueIn, &del, 0U);
+		xQueueReceive(xQueueIn, &pos, 0U);
 
 		/*servo*/
-		ServoPosition(&s1, del);
+		ServoPosition(&s1, pos);
 
 		/*Read Temperature*/
 		send_value.temp = get_temp();

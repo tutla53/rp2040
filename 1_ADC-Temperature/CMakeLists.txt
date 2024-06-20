@@ -5,12 +5,12 @@ include(pico_sdk_import.cmake)
 project(main C CXX ASM)
 set(CMAKE_C STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
-set(PICO_SDK_FREERTOS_SOURCE FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel)
+set(PICO_SDK_FREERTOS_SOURCE ../FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel)
 
 pico_sdk_init()
 
 add_executable(${CMAKE_PROJECT_NAME}
-    src/main.c
+    main.c
 )
 
 FILE(GLOB FreeRTOS_src ${PICO_SDK_FREERTOS_SOURCE}/*.c)
@@ -24,7 +24,7 @@ add_library(FreeRTOS STATIC
 target_include_directories( FreeRTOS PUBLIC
 							${PICO_SDK_FREERTOS_SOURCE}/include
 							${PICO_SDK_FREERTOS_SOURCE}/portable/GCC/ARM_CM0
-							include/)
+							../config/)
 							
 
 

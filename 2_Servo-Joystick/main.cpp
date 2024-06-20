@@ -88,27 +88,26 @@ static void main_task (void *args) {
 	bool out_led = 1;
 	send_value.temp = 0;
 	send_value.elapsed = 0;
-  
+
 	for(;;) {
-	  TickType_t t0 = xTaskGetTickCount();
-	  
-	  /*Receive delay from USB*/
-	  xQueueReceive(xQueueIn, &del, 0U);
-	  
-	  /*Toggle LED*/
-	  gpio_put(LED_PIN, out_led); 
-	  out_led = !(out_led);
-	  
-	  /*Read Temperature*/
-	  send_value.temp = get_temp();
-	  
-	  vTaskDelay(pdMS_TO_TICKS(del));
-	  
-	  send_value.elapsed = xTaskGetTickCount()-t0;
+		TickType_t t0 = xTaskGetTickCount();
+
+		/*Receive delay from USB*/
+		xQueueReceive(xQueueIn, &del, 0U);
+
+		/*Toggle LED*/
+		gpio_put(LED_PIN, out_led); 
+		out_led = !(out_led);
+
+		/*Read Temperature*/
+		send_value.temp = get_temp();
+
+		vTaskDelay(pdMS_TO_TICKS(del));
+
+		send_value.elapsed = xTaskGetTickCount()-t0;
 		
-	  /*Send the time value to USB*/
-	  xQueueSend(xQueueOut, &send_value, 0U);
-		
+		/*Send the time value to USB*/
+		xQueueSend(xQueueOut, &send_value, 0U);
 	}
 }
 

@@ -1,4 +1,4 @@
-# Raspberry Pico RP2040 Robotic Arm Project
+# Raspberry Pico RP2040 Robotic Project
 ***
 ## Software
 

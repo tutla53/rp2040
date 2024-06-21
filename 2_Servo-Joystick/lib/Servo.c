@@ -25,7 +25,7 @@ uint32_t pwm_set_freq_duty(uint slice_num,uint chan, uint32_t f, int d){
     return wrap;
 }
 
-void ServoInit(Servo *s, uint gpio, bool invert){
+void ServoInit(Servo_t *s, uint gpio, bool invert){
     gpio_set_function(gpio, GPIO_FUNC_PWM);
     s->gpio = gpio;
     s->slice = pwm_gpio_to_slice_num(gpio);
@@ -45,17 +45,17 @@ void ServoInit(Servo *s, uint gpio, bool invert){
     s->invert = invert;
 }
 
-void ServoOn(Servo *s){
+void ServoOn(Servo_t *s){
     pwm_set_enabled(s->slice, true);
     s->on = true;
 }
 
-void ServoOff(Servo *s){
+void ServoOff(Servo_t *s){
     pwm_set_enabled(s->slice, false);
     s->on = false;
 } 
 
-void ServoPosition(Servo *s, uint p){
+void ServoPosition(Servo_t *s, uint p){
     uint16_t M = (MAX_DUTY - MIN_DUTY)/100;
     pwm_set_dutyH(s->slice, s->chan, p*M+MIN_DUTY);
 }

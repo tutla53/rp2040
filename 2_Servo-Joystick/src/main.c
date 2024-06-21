@@ -22,7 +22,7 @@
 #define TEMP_SENS_PIN 	4
 
 /*Add Servo Motor*/
-Servo Servo_1;
+Servo_t servo_1;
 
 static QueueHandle_t xQueueOut = NULL, xQueueIn = NULL;
 static SemaphoreHandle_t h_mutex;
@@ -104,7 +104,7 @@ static void main_task (void *args) {
 		xQueueReceive(xQueueIn, &pos, 0U);
 
 		/*servo*/
-		ServoPosition(&Servo_1, pos);
+		ServoPosition(&servo_1, pos);
 
 		/*Send Pos*/
 		send_value.pos = pos;
@@ -148,8 +148,8 @@ static void output_task (void *args) {
 
 int main() {
 	GPIO_SETUP_INIT();
-	ServoInit(&Servo_1, SERVO_PIN, false);
-	ServoOn(&Servo_1);
+	ServoInit(&servo_1, SERVO_PIN, false);
+	ServoOn(&servo_1);
 	
 	xQueueOut 	= xQueueCreate(10, sizeof(Message_t));
 	xQueueIn  	= xQueueCreate(10, sizeof(uint32_t));

@@ -30,7 +30,7 @@ void vApplicationStackOverflowHook(TaskHandle_t *pxTask,signed portCHAR *pcTaskN
 }
 
 typedef struct {
-	float temp;
+	uint16_t pos;
 	TickType_t elapsed;
 } Message_t;
 
@@ -74,7 +74,7 @@ static void input_task(void *args) {
 	for (;;) {
 		ch_buff = getchar();
 		if(ch_buff == '\n'){
-			printf("Delay Value = %lu\n", val);
+			printf("PWM = %lu\n", val);
 			xQueueSend(xQueueIn, &val, 0U);
 			val = 0;
 		}
@@ -90,7 +90,7 @@ static void main_task (void *args) {
 	(void)args;
 	Message_t send_value;
 	uint32_t pos = 50;
-	send_value.temp = 0;
+	send_value.pos = 0;
 	send_value.elapsed = 0;
 
 	for(;;) {
@@ -103,9 +103,9 @@ static void main_task (void *args) {
 		ServoPosition(&s1, pos);
 
 		/*Read Temperature*/
-		send_value.temp = get_temp();
+		send_value.pos = pos;
 
-		vTaskDelay(pdMS_TO_TICKS(10));
+		vTaskDelay(pdMS_TO_TICKS(100));
 
 		send_value.elapsed = xTaskGetTickCount()-t0;
 		
@@ -119,19 +119,24 @@ static void output_task (void *args) {
 	TickType_t t0 = 0;
 	Message_t received_value;
 	bool out_led = 1;
+	float V_PWM = 0, pwm_duty = 0, period = 0;
 
 	for (;;) {
 		t0 = xTaskGetTickCount();
 		xQueueReceive(xQueueOut, &received_value, portMAX_DELAY);
+		pwm_duty = (received_value.pos* ((float)(MAX_DUTY - MIN_DUTY)/100)+MIN_DUTY)/100;
+		period = (10*pwm_duty)/(float) SERVO_FREQ;
+		V_PWM = (pwm_duty * 3.3)/100;
+
 		gpio_put(LED_PIN, out_led);
 		out_led = !out_led;
-		vTaskDelay(pdMS_TO_TICKS(100));
 		
 		mutex_lock();
-		printf("T %.2f, main = %lu, usb = %lu\n", 
-				received_value.temp, 
-				received_value.elapsed, 
-				xTaskGetTickCount()-t0);
+		printf("Pos:%d, Duty:%.1f, t:%.2f, V:%.3f\n", 
+				received_value.pos, 
+				pwm_duty,
+				period,
+				V_PWM);
 		mutex_unlock();
 		
 	}

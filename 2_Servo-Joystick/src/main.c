@@ -20,6 +20,7 @@
 #define SERVO_PIN		20
 #define LED_PIN			PICO_DEFAULT_LED_PIN
 #define TEMP_SENS_PIN 	4
+#define PWM_PIN			21
 
 /*Add Servo Motor*/
 Servo_t servo_1;
@@ -49,16 +50,6 @@ static void mutex_lock(void) {
 static void mutex_unlock(void) {
 	// prevents competing tasks from printing in the middle of our own line of text
 	xSemaphoreGive(h_mutex);
-}
-
-static void GPIO_SETUP_INIT(){
-	set_sys_clock_khz(125000, true);
-	stdio_init_all();
-	gpio_init(LED_PIN);
-	gpio_set_dir(LED_PIN, GPIO_OUT);
-	adc_init();
-	adc_set_temp_sensor_enabled(true);
-	adc_select_input(TEMP_SENS_PIN);
 }
 
 float get_temp(){
@@ -125,14 +116,14 @@ static void output_task (void *args) {
 	TickType_t t0 = 0;
 	Message_t received_value;
 	bool out_led = 1;
-	float V_PWM = 0, pwm_duty = 0, period = 0;
+	float V_PWM = 0, servo_duty = 0, period = 0;
 
 	for (;;) {
 		t0 = xTaskGetTickCount();
 		xQueueReceive(xQueueOut, &received_value, portMAX_DELAY);
-		pwm_duty = (received_value.pos* ((float)(MAX_DUTY - MIN_DUTY)/100)+MIN_DUTY)/100;
-		period = (10*pwm_duty)/(float) SERVO_FREQ;
-		V_PWM = (pwm_duty * 3.3)/100;
+		servo_duty = (received_value.pos* ((float)(MAX_DUTY - MIN_DUTY)/100)+MIN_DUTY)/100;
+		period = (10*servo_duty)/(float) SERVO_FREQ;
+		V_PWM = (servo_duty * 3.3)/100;
 
 		gpio_put(LED_PIN, out_led);
 		out_led = !out_led;
@@ -140,7 +131,7 @@ static void output_task (void *args) {
 		mutex_lock();
 		printf("Pos:%d, Duty:%.1f, t:%.2f, V:%.3f\n", 
 				received_value.pos, 
-				pwm_duty,
+				servo_duty,
 				period,
 				V_PWM);
 		mutex_unlock();
@@ -148,11 +139,30 @@ static void output_task (void *args) {
 	}
 }
 
+static void GPIO_SETUP_INIT(){
+	set_sys_clock_khz(125000, true);
+	/*Communication*/
+	stdio_init_all();
+	
+	/*LED*/
+	gpio_init(LED_PIN);
+	gpio_set_dir(LED_PIN, GPIO_OUT);
+	
+	/*ADC*/
+	adc_init();
+	adc_set_temp_sensor_enabled(true);
+	adc_select_input(TEMP_SENS_PIN);
+	
+	/*Servo*/
+	ServoInit(&servo_1, SERVO_PIN, false);
+	
+	/*PWM*/
+	PWMInit(&pwm_1, PWM_PIN, 1000, 72.5, false);
+}
+
 int main() {
 	GPIO_SETUP_INIT();
-	ServoInit(&servo_1, SERVO_PIN, false);
 	ServoOn(&servo_1);
-	PWMInit(&pwm_1, 21, 1000, 72.5, false);
 	PWMOn(&pwm_1);
 	
 	xQueueOut 	= xQueueCreate(10, sizeof(Message_t));

@@ -10,7 +10,7 @@ set(PICO_SDK_FREERTOS_SOURCE ../FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel)
 pico_sdk_init()
 
 add_executable(${CMAKE_PROJECT_NAME}
-    src/main.cpp
+    src/main.c
 )
 
 FILE(GLOB FreeRTOS_src ${PICO_SDK_FREERTOS_SOURCE}/*.c)

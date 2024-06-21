@@ -49,8 +49,8 @@ static void mutex_unlock(void) {
 static void GPIO_SETUP_INIT(){
 	set_sys_clock_khz(125000, true);
 	stdio_init_all();
-    gpio_init(LED_PIN);
-    gpio_set_dir(LED_PIN, GPIO_OUT);
+	gpio_init(LED_PIN);
+	gpio_set_dir(LED_PIN, GPIO_OUT);
 	adc_init();
 	adc_set_temp_sensor_enabled(true);
 	adc_select_input(4);
@@ -102,7 +102,7 @@ static void main_task (void *args) {
 		/*servo*/
 		ServoPosition(&s1, pos);
 
-		/*Read Temperature*/
+		/*Send Pos*/
 		send_value.pos = pos;
 
 		vTaskDelay(pdMS_TO_TICKS(100));
@@ -144,8 +144,8 @@ static void output_task (void *args) {
 
 int main() {
 	GPIO_SETUP_INIT();
-    ServoInit(&s1, SERVO_PIN, false);
-    ServoOn(&s1);
+	ServoInit(&s1, SERVO_PIN, false);
+	ServoOn(&s1);
 	
 	xQueueOut 	= xQueueCreate(10, sizeof(Message_t));
 	xQueueIn  	= xQueueCreate(10, sizeof(uint32_t));

@@ -1,22 +1,28 @@
 #include <stdio.h>
 #include <string.h>
+/*Pico Lib*/
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/adc.h"
 #include "hardware/pwm.h"
 #include "hardware/irq.h"
-
+/*FreeRTOS Lib*/
 #include "FreeRTOS.h"
 #include "FreeRTOSConfig.h"
 #include "task.h"
 #include "semphr.h"
 #include "queue.h"
-
+/*Custom Lib*/
 #include "Servo.h"
 
 #define mainECHO_TASK_PRIORITY	(tskIDLE_PRIORITY + 1)
-#define SERVO_PIN				20
-#define LED_PIN  				PICO_DEFAULT_LED_PIN
+/*Hardware Setup*/
+#define SERVO_PIN		20
+#define LED_PIN			PICO_DEFAULT_LED_PIN
+#define TEMP_SENS_PIN 	4
+
+/*Add Servo Motor*/
+Servo Servo_1;
 
 static QueueHandle_t xQueueOut = NULL, xQueueIn = NULL;
 static SemaphoreHandle_t h_mutex;
@@ -34,15 +40,13 @@ typedef struct {
 	TickType_t elapsed;
 } Message_t;
 
-Servo s1;
-/* mutex_lock()/mutex_unlock()
-	- prevents competing tasks from printing in the middle of our own line of text
-*/
 static void mutex_lock(void) {
+	// prevents competing tasks from printing in the middle of our own line of text
 	xSemaphoreTake(h_mutex,portMAX_DELAY);
 }
 
 static void mutex_unlock(void) {
+	// prevents competing tasks from printing in the middle of our own line of text
 	xSemaphoreGive(h_mutex);
 }
 
@@ -53,7 +57,7 @@ static void GPIO_SETUP_INIT(){
 	gpio_set_dir(LED_PIN, GPIO_OUT);
 	adc_init();
 	adc_set_temp_sensor_enabled(true);
-	adc_select_input(4);
+	adc_select_input(TEMP_SENS_PIN);
 }
 
 float get_temp(){
@@ -100,7 +104,7 @@ static void main_task (void *args) {
 		xQueueReceive(xQueueIn, &pos, 0U);
 
 		/*servo*/
-		ServoPosition(&s1, pos);
+		ServoPosition(&Servo_1, pos);
 
 		/*Send Pos*/
 		send_value.pos = pos;
@@ -144,8 +148,8 @@ static void output_task (void *args) {
 
 int main() {
 	GPIO_SETUP_INIT();
-	ServoInit(&s1, SERVO_PIN, false);
-	ServoOn(&s1);
+	ServoInit(&Servo_1, SERVO_PIN, false);
+	ServoOn(&Servo_1);
 	
 	xQueueOut 	= xQueueCreate(10, sizeof(Message_t));
 	xQueueIn  	= xQueueCreate(10, sizeof(uint32_t));

@@ -5,7 +5,6 @@
 #include "hardware/gpio.h"
 #include "hardware/adc.h"
 #include "hardware/pwm.h"
-#include "hardware/irq.h"
 /*FreeRTOS Lib*/
 #include "FreeRTOS.h"
 #include "FreeRTOSConfig.h"
@@ -14,6 +13,7 @@
 #include "queue.h"
 /*Custom Lib*/
 #include "Servo.h"
+#include "PWMmgr.h"
 
 #define mainECHO_TASK_PRIORITY	(tskIDLE_PRIORITY + 1)
 /*Hardware Setup*/
@@ -23,6 +23,7 @@
 
 /*Add Servo Motor*/
 Servo_t servo_1;
+PWM_t	pwm_1;
 
 static QueueHandle_t xQueueOut = NULL, xQueueIn = NULL;
 static SemaphoreHandle_t h_mutex;
@@ -105,6 +106,7 @@ static void main_task (void *args) {
 
 		/*servo*/
 		ServoPosition(&servo_1, pos);
+		SetPWM_Duty(&pwm_1, pos);
 
 		/*Send Pos*/
 		send_value.pos = pos;
@@ -150,6 +152,8 @@ int main() {
 	GPIO_SETUP_INIT();
 	ServoInit(&servo_1, SERVO_PIN, false);
 	ServoOn(&servo_1);
+	PWMInit(&pwm_1, 21, 1000, 72.5, false);
+	PWMOn(&pwm_1);
 	
 	xQueueOut 	= xQueueCreate(10, sizeof(Message_t));
 	xQueueIn  	= xQueueCreate(10, sizeof(uint32_t));

@@ -12,6 +12,7 @@ pico_sdk_init()
 add_executable(${CMAKE_PROJECT_NAME}
     src/main.c
 	lib/Servo.c
+	lib/PWMmgr.c
 )
 
 FILE(GLOB FreeRTOS_src ${PICO_SDK_FREERTOS_SOURCE}/*.c)
@@ -34,7 +35,6 @@ target_link_libraries(	${CMAKE_PROJECT_NAME}
 						hardware_gpio
 						hardware_adc
 						hardware_pwm
-						hardware_irq
 						FreeRTOS)
 
 pico_add_extra_outputs(${CMAKE_PROJECT_NAME})

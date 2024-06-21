@@ -14,7 +14,7 @@ void pwm_set_dutyH(uint slice_num, uint chan, int d){
 }
 
 uint32_t pwm_set_freq_duty(uint slice_num,uint chan, uint32_t f, int d){
-	uint32_t clock = 125000000;
+	uint32_t clock = PWM_CLOCK;
 	uint32_t divider16 = clock / f / 4096 + (clock % (f * 4096) != 0);
 	if (divider16 / 16 == 0)
 		divider16 = 16;
@@ -33,8 +33,8 @@ void ServoInit(Servo *s, uint gpio, bool invert){
     pwm_set_enabled(s->slice, false);
     s->on = false;
     s->speed = 0;
-    s->resolution = pwm_set_freq_duty(s->slice, s->chan, 50, 0);
-    pwm_set_dutyH(s->slice, s->chan, 250);
+    s->resolution = pwm_set_freq_duty(s->slice, s->chan, SERVO_FREQ, 0);
+    pwm_set_dutyH(s->slice, s->chan, MIN_DUTY);
 
     if (s->chan) {
         pwm_set_output_polarity(s->slice, false, invert);
@@ -56,5 +56,6 @@ void ServoOff(Servo *s){
 } 
 
 void ServoPosition(Servo *s, uint p){
-    pwm_set_dutyH(s->slice, s->chan, p*10+250);
+    uint16_t M = (MAX_DUTY - MIN_DUTY)/100;
+    pwm_set_dutyH(s->slice, s->chan, p*M+MIN_DUTY);
 }

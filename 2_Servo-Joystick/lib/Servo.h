@@ -1,6 +1,14 @@
 #ifndef SERVO_H
 #define SERVO_H
 
+/*PWM CONFIG*/
+#define SERVO_FREQ	50
+#define	PWM_CLOCK	125000000
+#define	MIN_PERIOD	0.5	/*ms*/
+#define	MAX_PERIOD	2.5	/*ms*/
+#define MIN_DUTY	(uint16_t)(MIN_PERIOD*10*SERVO_FREQ)
+#define MAX_DUTY	(uint16_t)(MAX_PERIOD*10*SERVO_FREQ)	
+
 typedef struct {
 	uint gpio;
 	uint slice;

@@ -19,12 +19,16 @@
 /*Hardware Setup*/
 #define SERVO_PIN		20
 #define LED_PIN			PICO_DEFAULT_LED_PIN
-#define TEMP_SENS_PIN 	4
+#define TEMP_SENS_PIN 	        4
 #define PWM_PIN			21
+#define ADC_X_PIN               26
+#define ADC_Y_PIN               27
 
 /*Add Servo Motor*/
 Servo_t servo_1;
 PWM_t	pwm_1;
+
+const float conversion_factor = 3.3f/(1<<12); /*For ADC*/
 
 static QueueHandle_t xQueueOut = NULL, xQueueIn = NULL;
 static SemaphoreHandle_t h_mutex;
@@ -38,8 +42,8 @@ void vApplicationStackOverflowHook(TaskHandle_t *pxTask,signed portCHAR *pcTaskN
 }
 
 typedef struct {
-	uint16_t pos;
-	TickType_t elapsed;
+	float duty_1;
+	float duty_2;
 } Message_t;
 
 static void mutex_lock(void) {
@@ -52,14 +56,24 @@ static void mutex_unlock(void) {
 	xSemaphoreGive(h_mutex);
 }
 
+int map(int s, int a1, int a2, int b1, int b2) {
+   return b1 + (s - a1) * (b2 - b1) / (a2 - a1);
+ }
+
 float get_temp(){
 	adc_select_input(4);
 	uint16_t raw = adc_read();
 	
-	const float conversion_factor = 3.3f/(1<<12);
-	float result = raw*conversion_factor;
+	float result = raw * conversion_factor;
 	float temp = 27 - (result-0.706)/0.001721;
 	return temp;
+}
+
+float get_duty(uint8_t adc_pin){
+        adc_select_input(adc_pin);
+        uint16_t raw = adc_read();
+        float result = ((float) raw * 100)/(1<<12); /*duty 0 - 100*/
+        return result;        
 }
 
 static void input_task(void *args) {
@@ -85,9 +99,10 @@ static void main_task (void *args) {
 	/*It will be changed to ISR*/
 	(void)args;
 	Message_t send_value;
-	uint32_t pos = 50;
-	send_value.pos = 0;
-	send_value.elapsed = 0;
+	uint16_t pos = 50;
+	float duty_1 = 0, duty_2 = 0;
+	send_value.duty_1 = 0;
+	send_value.duty_2 = 0;
 
 	for(;;) {
 		TickType_t t0 = xTaskGetTickCount();
@@ -96,15 +111,17 @@ static void main_task (void *args) {
 		xQueueReceive(xQueueIn, &pos, 0U);
 
 		/*servo*/
-		ServoPosition(&servo_1, pos);
-		SetPWM_Duty(&pwm_1, pos);
+		duty_1 = get_duty(0);
+		duty_2 = get_duty(1);
+		
+		ServoPosition(&servo_1, duty_1);
+		SetPWM_Duty(&pwm_1, duty_2);
 
 		/*Send Pos*/
-		send_value.pos = pos;
+		send_value.duty_1 = duty_1;
+		send_value.duty_2 = duty_2;
 
-		vTaskDelay(pdMS_TO_TICKS(100));
-
-		send_value.elapsed = xTaskGetTickCount()-t0;
+		vTaskDelay(pdMS_TO_TICKS(pos));
 		
 		/*Send the time value to USB*/
 		xQueueSend(xQueueOut, &send_value, 0U);
@@ -116,24 +133,26 @@ static void output_task (void *args) {
 	TickType_t t0 = 0;
 	Message_t received_value;
 	bool out_led = 1;
-	float V_PWM = 0, servo_duty = 0, period = 0;
+	float V_Servo = 0, servo_duty = 0, V_PWM = 0, pwm_duty =0;
 
 	for (;;) {
 		t0 = xTaskGetTickCount();
 		xQueueReceive(xQueueOut, &received_value, portMAX_DELAY);
-		servo_duty = (received_value.pos* ((float)(MAX_DUTY - MIN_DUTY)/100)+MIN_DUTY)/100;
-		period = (10*servo_duty)/(float) SERVO_FREQ;
-		V_PWM = (servo_duty * 3.3)/100;
+		servo_duty = (received_value.duty_1 * ((float)(SERVO_MAX_DUTY - SERVO_MIN_DUTY)/100)+SERVO_MIN_DUTY)/100;
+		pwm_duty  = received_value.duty_2;
+		V_Servo = (servo_duty * 3.3)/100;
+		V_PWM = (pwm_duty * 3.3)/100;
 
 		gpio_put(LED_PIN, out_led);
 		out_led = !out_led;
 		
 		mutex_lock();
-		printf("Pos:%d, Duty:%.1f, t:%.2f, V:%.3f\n", 
-				received_value.pos, 
-				servo_duty,
-				period,
-				V_PWM);
+		printf("SD:%.2f, Vs:%.3f, PD:%.2f, Vp:%.3f\n", 
+				servo_duty, 
+				V_Servo,
+				pwm_duty,
+				V_PWM
+				);
 		mutex_unlock();
 		
 	}
@@ -150,6 +169,8 @@ static void GPIO_SETUP_INIT(){
 	
 	/*ADC*/
 	adc_init();
+	adc_gpio_init(ADC_X_PIN);
+	adc_gpio_init(ADC_Y_PIN);
 	adc_set_temp_sensor_enabled(true);
 	adc_select_input(TEMP_SENS_PIN);
 	

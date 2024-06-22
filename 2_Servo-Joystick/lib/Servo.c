@@ -4,7 +4,7 @@
 #include "Servo.h"
 #include "PWMmgr.h"
 
-void pwm_set_dutyH(uint slice_num, uint chan, int d){
+void pwm_set_dutyH(uint slice_num, uint chan, float d){
     /*For Servo*/
     pwm_set_chan_level(slice_num, chan, pwm_get_wrap(slice_num) * d / 10000);
 }
@@ -18,7 +18,7 @@ void ServoInit(Servo_t *s, uint gpio, bool invert){
     s->on = false;
     s->speed = 0;
     s->resolution = pwm_set_freq_duty(s->slice, s->chan, SERVO_FREQ, 0);
-    pwm_set_dutyH(s->slice, s->chan, MIN_DUTY);
+    pwm_set_dutyH(s->slice, s->chan, SERVO_MIN_DUTY);
 
     if (s->chan) {
         pwm_set_output_polarity(s->slice, false, invert);
@@ -39,7 +39,7 @@ void ServoOff(Servo_t *s){
     s->on = false;
 } 
 
-void ServoPosition(Servo_t *s, uint p){
-    uint16_t M = (MAX_DUTY - MIN_DUTY)/100;
-    pwm_set_dutyH(s->slice, s->chan, p*M+MIN_DUTY);
+void ServoPosition(Servo_t *s, float p){
+    uint16_t M = (SERVO_MAX_DUTY - SERVO_MIN_DUTY)/100;
+    pwm_set_dutyH(s->slice, s->chan, p*M+SERVO_MIN_DUTY);
 }

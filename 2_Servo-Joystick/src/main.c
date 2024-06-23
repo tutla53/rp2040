@@ -17,10 +17,10 @@
 
 #define mainECHO_TASK_PRIORITY	(tskIDLE_PRIORITY + 1)
 /*Hardware Setup*/
-#define SERVO_PIN		20
-#define LED_PIN			PICO_DEFAULT_LED_PIN
+#define SERVO_PIN				20
+#define LED_PIN					PICO_DEFAULT_LED_PIN
 #define TEMP_SENS_PIN 	        4
-#define PWM_PIN			21
+#define PWM_PIN					21
 #define ADC_X_PIN               26
 #define ADC_Y_PIN               27
 
@@ -138,7 +138,7 @@ static void output_task (void *args) {
 	for (;;) {
 		t0 = xTaskGetTickCount();
 		xQueueReceive(xQueueOut, &received_value, portMAX_DELAY);
-		servo_duty = (received_value.duty_1 * ((float)(SERVO_MAX_DUTY - SERVO_MIN_DUTY)/100)+SERVO_MIN_DUTY)/100;
+		servo_duty = (received_value.duty_1 * ((float)(servo_1.max_duty - servo_1.min_duty)/100)+servo_1.min_duty)/100;
 		pwm_duty  = received_value.duty_2;
 		V_Servo = (servo_duty * 3.3)/100;
 		V_PWM = (pwm_duty * 3.3)/100;
@@ -175,7 +175,7 @@ static void GPIO_SETUP_INIT(){
 	adc_select_input(TEMP_SENS_PIN);
 	
 	/*Servo*/
-	ServoInit(&servo_1, SERVO_PIN, false);
+	ServoInit(&servo_1, SERVO_PIN, 0.5, 2.5, false);
 	
 	/*PWM*/
 	PWMInit(&pwm_1, PWM_PIN, 1000, 72.5, false);

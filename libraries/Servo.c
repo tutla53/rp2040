@@ -9,7 +9,7 @@ void pwm_set_dutyH(uint slice_num, uint chan, float d){
     pwm_set_chan_level(slice_num, chan, pwm_get_wrap(slice_num) * d / 10000);
 }
 
-void ServoInit(Servo_t *s, uint gpio, bool invert){
+void ServoInit(Servo_t *s, uint gpio, float min_period, float max_period, bool invert){  	
     gpio_set_function(gpio, GPIO_FUNC_PWM);
     s->gpio = gpio;
     s->slice = pwm_gpio_to_slice_num(gpio);
@@ -18,8 +18,13 @@ void ServoInit(Servo_t *s, uint gpio, bool invert){
     s->on = false;
     s->speed = 0;
     s->resolution = pwm_set_freq_duty(s->slice, s->chan, SERVO_FREQ, 0);
-    pwm_set_dutyH(s->slice, s->chan, SERVO_MIN_DUTY);
 
+    float servo_min_duty = (min_period*10*SERVO_FREQ);
+    float servo_max_duty = (max_period*10*SERVO_FREQ);
+    pwm_set_dutyH(s->slice, s->chan, servo_min_duty);
+    s->min_duty = servo_min_duty;
+    s->max_duty = servo_max_duty;
+    
     if (s->chan) {
         pwm_set_output_polarity(s->slice, false, invert);
     }
@@ -40,6 +45,6 @@ void ServoOff(Servo_t *s){
 } 
 
 void ServoPosition(Servo_t *s, float p){
-    uint16_t M = (SERVO_MAX_DUTY - SERVO_MIN_DUTY)/100;
-    pwm_set_dutyH(s->slice, s->chan, p*M+SERVO_MIN_DUTY);
+    uint16_t M = (s->max_duty - s->min_duty)/100;
+    pwm_set_dutyH(s->slice, s->chan, p*M+s->min_duty);
 }

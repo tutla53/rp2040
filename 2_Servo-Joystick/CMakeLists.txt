@@ -11,7 +11,7 @@ set(LIBRARY_SOURCE ../libraries)
 pico_sdk_init()
 
 add_executable(${CMAKE_PROJECT_NAME}
-    src/main.c
+	src/main.c
 	${LIBRARY_SOURCE}/Servo.c
 	${LIBRARY_SOURCE}/PWMmgr.c
 )
@@ -24,7 +24,7 @@ add_library(FreeRTOS STATIC
 			${PICO_SDK_FREERTOS_SOURCE}/portable/MemMang/heap_4.c)
 
 
-target_include_directories( FreeRTOS PUBLIC
+target_include_directories(	FreeRTOS PUBLIC
 							${PICO_SDK_FREERTOS_SOURCE}/include
 							${PICO_SDK_FREERTOS_SOURCE}/portable/GCC/ARM_CM0
 							config/

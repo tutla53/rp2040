@@ -19,10 +19,10 @@
 /*Hardware Setup*/
 #define SERVO_PIN				20
 #define LED_PIN					PICO_DEFAULT_LED_PIN
-#define TEMP_SENS_PIN 	        4
+#define TEMP_SENS_PIN			4
 #define PWM_PIN					21
-#define ADC_X_PIN               26
-#define ADC_Y_PIN               27
+#define ADC_X_PIN				26
+#define ADC_Y_PIN				27
 
 /*Add Servo Motor*/
 Servo_t servo_1;

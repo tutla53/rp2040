@@ -78,20 +78,20 @@ float get_duty(uint8_t adc_pin){
 
 static void input_task(void *args) {
 	(void)args;
-	char ch_buff = 0;
+	int ch_buff = 0;
 	uint32_t val = 0;
 
 	for (;;) {
-		ch_buff = getchar();
-		if(ch_buff == '\n'){
-			printf("PWM = %lu\n", val);
-			xQueueSend(xQueueIn, &val, 0U);
-			val = 0;
-		}
-			
-		if(ch_buff >= '0' && ch_buff <= '9'){
-			val = val*10 + ch_buff-'0';
-		}
+		/*Create Non-Blocking getchar -> return PICO_ERROR_TIMEOUT = -1 if No Input*/
+		while ((ch_buff = getchar_timeout_us(100)) != '\n') {
+			if(ch_buff >= '0' && ch_buff <= '9'){
+				val = val*10 + ch_buff-'0';
+			}				
+        }
+		
+		printf("PWM = %lu\n", val);
+		xQueueSend(xQueueIn, &val, 0U);
+		val = 0;
 	}
 }
 
@@ -190,9 +190,9 @@ int main() {
 	xQueueIn  	= xQueueCreate(10, sizeof(uint32_t));
 	h_mutex 	= xSemaphoreCreateMutex();
 	
-	xTaskCreate(main_task,"main_task",400,NULL,configMAX_PRIORITIES-2,NULL);
-	xTaskCreate(input_task,"input_task",400,NULL,mainECHO_TASK_PRIORITY,NULL);
-	xTaskCreate(output_task,"output_task",400,NULL,mainECHO_TASK_PRIORITY,NULL);
+	xTaskCreate(main_task,"main_task",400,NULL,configMAX_PRIORITIES-1,NULL);
+	xTaskCreate(input_task,"input_task",400,NULL,tskIDLE_PRIORITY,NULL);
+	xTaskCreate(output_task,"output_task",400,NULL,tskIDLE_PRIORITY,NULL);
 	
 	vTaskStartScheduler();
 	

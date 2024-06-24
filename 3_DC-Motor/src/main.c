@@ -63,20 +63,20 @@ float get_temp(){
 
 static void input_task(void *args) {
 	(void)args;
-	char ch_buff = 0;
+	int ch_buff = 0;
 	uint32_t val = 0;
 
 	for (;;) {
-		ch_buff = getchar();
-		if(ch_buff == '\n'){
-			printf("Delay Value = %lu\n", val);
-			xQueueSend(xQueueIn, &val, 0U);
-			val = 0;
-		}
-			
-		if(ch_buff >= '0' && ch_buff <= '9'){
-			val = val*10 + ch_buff-'0';
-		}
+		/*Create Non-Blocking getchar -> return PICO_ERROR_TIMEOUT = -1 if No Input*/
+		while ((ch_buff = getchar_timeout_us(100)) != '\n') {
+			if(ch_buff >= '0' && ch_buff <= '9'){
+				val = val*10 + ch_buff-'0';
+			}				
+        }
+		
+		printf("PWM = %lu\n", val);
+		xQueueSend(xQueueIn, &val, 0U);
+		val = 0;
 	}
 }
 
@@ -88,26 +88,26 @@ static void main_task (void *args) {
 	bool out_led = 1;
 	send_value.temp = 0;
 	send_value.elapsed = 0;
-  
+
 	for(;;) {
-	  TickType_t t0 = xTaskGetTickCount();
-	  
-	  /*Receive delay from USB*/
-	  xQueueReceive(xQueueIn, &del, 0U);
-	  
-	  /*Toggle LED*/
-	  gpio_put(LED_PIN, out_led); 
-	  out_led = !(out_led);
-	  
-	  /*Read Temperature*/
-	  send_value.temp = get_temp();
-	  
-	  vTaskDelay(pdMS_TO_TICKS(del));
-	  
-	  send_value.elapsed = xTaskGetTickCount()-t0;
+		TickType_t t0 = xTaskGetTickCount();
+
+		/*Receive delay from USB*/
+		xQueueReceive(xQueueIn, &del, 0U);
+
+		/*Toggle LED*/
+		gpio_put(LED_PIN, out_led); 
+		out_led = !(out_led);
+
+		/*Read Temperature*/
+		send_value.temp = get_temp();
+
+		vTaskDelay(pdMS_TO_TICKS(del));
+
+		send_value.elapsed = xTaskGetTickCount()-t0;
 		
-	  /*Send the time value to USB*/
-	  xQueueSend(xQueueOut, &send_value, 0U);
+		/*Send the time value to USB*/
+		xQueueSend(xQueueOut, &send_value, 0U);
 		
 	}
 }

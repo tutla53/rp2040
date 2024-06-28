@@ -16,10 +16,10 @@ typedef struct {
 	bool invert;
 } Servo_t;
 
-void pwm_set_dutyH(uint slice_num, uint chan, float d);
-void ServoInit(Servo_t *s, uint gpio, float min_period, float max_period, bool invert);
-void ServoOn(Servo_t *s);
-void ServoOff(Servo_t *s); 
-void ServoPosition(Servo_t *s, float p);
+void set_servo_duty(uint slice_num, uint chan, float d);
+void Servo_Init(Servo_t *s, uint gpio, float min_period, float max_period, bool invert);
+void set_servo_on(Servo_t *s);
+void set_servo_off(Servo_t *s); 
+void set_servo_pos(Servo_t *s, float p);
 
 #endif

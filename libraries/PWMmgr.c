@@ -3,13 +3,13 @@
 
 #include "PWMmgr.h"
 
-uint32_t pwm_get_wrap(uint slice_num){
+uint32_t get_pwm_wrap(uint slice_num){
     valid_params_if(PWM, slice_num >= 0 && slice_num < NUM_PWM_SLICES);
     return pwm_hw->slice[slice_num].top;
 }
 
 void pwm_set_duty(uint slice_num, uint chan, float d){
-    pwm_set_chan_level(slice_num,chan,pwm_get_wrap(slice_num)*d/100);
+    pwm_set_chan_level(slice_num,chan,get_pwm_wrap(slice_num)*d/100);
 }
 
 uint32_t pwm_set_freq_duty(uint slice_num,uint chan, uint32_t f, int d){
@@ -24,7 +24,7 @@ uint32_t pwm_set_freq_duty(uint slice_num,uint chan, uint32_t f, int d){
     return wrap;
 }
 
-void PWMInit(PWM_t *s, uint gpio, uint16_t f_pwm, float duty_init, bool invert){
+void PWM_Init(PWM_t *s, uint gpio, uint16_t f_pwm, float duty_init, bool invert){
     gpio_set_function(gpio, GPIO_FUNC_PWM);
     s->gpio = gpio;
     s->slice = pwm_gpio_to_slice_num(gpio);
@@ -42,16 +42,16 @@ void PWMInit(PWM_t *s, uint gpio, uint16_t f_pwm, float duty_init, bool invert){
     s->invert = invert;
 }
 
-void PWMOn(PWM_t *s){
+void set_pwm_on(PWM_t *s){
     pwm_set_enabled(s->slice, true);
     s->on = true;
 }
 
-void PWMOff(PWM_t *s){
+void set_pwm_off(PWM_t *s){
     pwm_set_enabled(s->slice, false);
     s->on = false;
 } 
 
-void SetPWM_Duty(PWM_t *s, float d){
+void set_pwm_duty(PWM_t *s, float d){
     pwm_set_duty(s->slice, s->chan, d);
 }

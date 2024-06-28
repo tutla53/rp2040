@@ -5,6 +5,7 @@
 #include "hardware/gpio.h"
 #include "hardware/adc.h"
 #include "hardware/pwm.h"
+#include "hardware/irq.h"
 /*FreeRTOS Lib*/
 #include "FreeRTOS.h"
 #include "FreeRTOSConfig.h"
@@ -30,7 +31,7 @@ PWM_t	pwm_1;
 
 const float conversion_factor = 3.3f/(1<<12); /*For ADC*/
 
-static QueueHandle_t xQueueOut = NULL, xQueueIn = NULL;
+static QueueHandle_t xQueueOut = NULL, xQueueIn = NULL, xQueueServo = NULL;
 static SemaphoreHandle_t h_mutex;
 
 extern void vApplicationStackOverflowHook(TaskHandle_t *pxTask,signed portCHAR *pcTaskName);
@@ -58,7 +59,15 @@ static void mutex_unlock(void) {
 
 int map(int s, int a1, int a2, int b1, int b2) {
    return b1 + (s - a1) * (b2 - b1) / (a2 - a1);
- }
+}
+
+void servo_IRQ_handler(){
+	float duty;
+	pwm_clear_irq(servo_1.slice);
+	if (xQueueReceive(xQueueServo, &duty, 0U) == pdPASS ){
+		set_servo_pos(&servo_1, duty);
+	}
+}
 
 float get_temp(){
 	adc_select_input(4);
@@ -114,8 +123,8 @@ static void main_task (void *args) {
 		duty_1 = get_duty(0);
 		duty_2 = get_duty(1);
 		
-		ServoPosition(&servo_1, duty_1);
-		SetPWM_Duty(&pwm_1, duty_2);
+		xQueueSend(xQueueServo, &duty_1, 0U);
+		set_pwm_duty(&pwm_1, duty_2);
 
 		/*Send Pos*/
 		send_value.duty_1 = duty_1;
@@ -175,19 +184,25 @@ static void GPIO_SETUP_INIT(){
 	adc_select_input(TEMP_SENS_PIN);
 	
 	/*Servo*/
-	ServoInit(&servo_1, SERVO_PIN, 0.5, 2.5, false);
+	Servo_Init(&servo_1, SERVO_PIN, 1.0, 2.0, false);
+	pwm_clear_irq(servo_1.slice);
+	pwm_clear_irq(servo_1.slice);
+	pwm_set_irq_enabled(servo_1.slice, true);
+	irq_set_exclusive_handler(PWM_IRQ_WRAP, servo_IRQ_handler);
+	irq_set_enabled(PWM_IRQ_WRAP, true);
 	
 	/*PWM*/
-	PWMInit(&pwm_1, PWM_PIN, 1000, 72.5, false);
+	PWM_Init(&pwm_1, PWM_PIN, 1000, 72.5, false);
 }
 
 int main() {
 	GPIO_SETUP_INIT();
-	ServoOn(&servo_1);
-	PWMOn(&pwm_1);
+	set_servo_on(&servo_1);
+	set_pwm_on(&pwm_1);
 	
 	xQueueOut 	= xQueueCreate(10, sizeof(Message_t));
 	xQueueIn  	= xQueueCreate(10, sizeof(uint32_t));
+	xQueueServo	= xQueueCreate(1, sizeof(float));
 	h_mutex 	= xSemaphoreCreateMutex();
 	
 	xTaskCreate(main_task,"main_task",400,NULL,configMAX_PRIORITIES-1,NULL);

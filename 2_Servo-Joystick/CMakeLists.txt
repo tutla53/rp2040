@@ -36,6 +36,7 @@ target_link_libraries(	${CMAKE_PROJECT_NAME}
 						hardware_gpio
 						hardware_adc
 						hardware_pwm
+						hardware_irq
 						FreeRTOS)
 
 pico_add_extra_outputs(${CMAKE_PROJECT_NAME})

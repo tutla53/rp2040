@@ -36,14 +36,6 @@ const float conversion_factor = 3.3f/(1<<12); /*For ADC*/
 static QueueHandle_t xQueue_USB_Out = NULL, xQueue_USB_In = NULL, xQueueServo = NULL;
 static SemaphoreHandle_t h_mutex;
 
-extern void vApplicationStackOverflowHook(TaskHandle_t *pxTask,signed portCHAR *pcTaskName);
-
-void vApplicationStackOverflowHook(TaskHandle_t *pxTask,signed portCHAR *pcTaskName) {
-	(void)pxTask;
-	(void)pcTaskName;
-	for(;;);
-}
-
 typedef struct {
 	float duty_1;
 	float duty_2;

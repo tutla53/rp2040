@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.13)
 
-include(pico_sdk_import.cmake)
+set(LIBRARY_SOURCE ../libraries)
+include(${LIBRARY_SOURCE}/pico_sdk_import.cmake)
 
 project(main C CXX ASM)
 set(CMAKE_C STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(PICO_SDK_FREERTOS_SOURCE ../FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel)
-set(LIBRARY_SOURCE ../libraries)
 
 pico_sdk_init()
 

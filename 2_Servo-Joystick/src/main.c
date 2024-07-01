@@ -111,7 +111,7 @@ static void main_task(void *args) {
 	/*It will be changed to ISR*/
 	(void)args;
 	Message_t send_value;
-	uint16_t pos = 50;
+	uint16_t pos = 10;
 	float duty_1 = 0, duty_2 = 0, duty_3;
 	send_value.duty_1 = 0;
 	send_value.duty_2 = 0;

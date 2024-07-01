@@ -93,7 +93,10 @@ static void input_task(void *args) {
 			}				
         }
 		
+		mutex_lock();
 		printf("PWM = %lu\n", val);
+		mutex_unlock();
+		
 		xQueueSend(xQueue_USB_In, &val, 0U);
 		val = 0;
 	}

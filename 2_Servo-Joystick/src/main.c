@@ -18,10 +18,10 @@
 
 #define mainECHO_TASK_PRIORITY	(tskIDLE_PRIORITY + 1)
 /*Hardware Setup*/
-#define SERVO_PIN				20
 #define LED_PIN					PICO_DEFAULT_LED_PIN
 #define TEMP_SENS_PIN			4
-#define PWM_PIN					21
+#define PWM_PIN					18 /*PWM Channel 1A*/
+#define SERVO_PIN				20 /*PWM Channel 2A*/
 #define ADC_X_PIN				26
 #define ADC_Y_PIN				27
 
@@ -104,7 +104,7 @@ static void input_task(void *args) {
 	}
 }
 
-static void main_task (void *args) {
+static void main_task(void *args) {
 	/*It will be changed to ISR*/
 	(void)args;
 	Message_t send_value;
@@ -137,7 +137,7 @@ static void main_task (void *args) {
 	}
 }
 
-static void output_task (void *args) {
+static void output_task(void *args) {
 	(void)args;
 	TickType_t t0 = 0;
 	Message_t received_value;
@@ -157,11 +157,7 @@ static void output_task (void *args) {
 		
 		mutex_lock();
 		printf("SD:%.2f, Vs:%.3f, PD:%.2f, Vp:%.3f\n", 
-				servo_duty, 
-				V_Servo,
-				pwm_duty,
-				V_PWM
-				);
+				servo_duty, V_Servo, pwm_duty, V_PWM);
 		mutex_unlock();
 		
 	}

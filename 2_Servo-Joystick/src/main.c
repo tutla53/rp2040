@@ -178,8 +178,8 @@ static void GPIO_SETUP_INIT(){
 	adc_set_temp_sensor_enabled(true);
 	
 	/*Servo*/
-	Servo_Init(&servo_1, SERVO_PIN_1, 1.0, 2.0, false);
-	Servo_Init(&servo_2, SERVO_PIN_2, 1.0, 2.0, false);
+	Servo_Init(&servo_1, SERVO_PIN_1, 0.5, 2.5, false);
+	Servo_Init(&servo_2, SERVO_PIN_2, 0.5, 2.5, false);
 	pwm_clear_irq(servo_1.slice);
 	pwm_clear_irq(servo_1.slice);
 	pwm_set_irq_enabled(servo_1.slice, true);

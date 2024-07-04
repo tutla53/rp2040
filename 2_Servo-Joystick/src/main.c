@@ -94,7 +94,7 @@ static void input_task(void *args) {
         }
 		
 		mutex_lock();
-		printf("Duty = %lu\n", val);
+		printf("PWM = %lu\n", val);
 		mutex_unlock();
 		
 		xQueueSend(xQueue_USB_In, &val, 0U);
@@ -111,7 +111,7 @@ static void main_task(void *args) {
 	send_value.duty_1 = 0;
 	send_value.duty_2 = 0;
 
-	while(true){
+	for(;;) {
 		TickType_t t0 = xTaskGetTickCount();
 
 		/*Receive delay from USB*/
@@ -142,7 +142,7 @@ static void output_task(void *args) {
 	bool out_led = 1;
 	float V_Servo_1 = 0, V_Servo_2 = 0, servo_duty_1 = 0, servo_duty_2 = 0;
 
-	while(true) {
+	for (;;) {
 		t0 = xTaskGetTickCount();
 		if(xQueueReceive(xQueue_USB_Out, &received_value, portMAX_DELAY) == pdPASS){
 			servo_duty_1 = (received_value.duty_1 * ((float)(servo_1.max_duty - servo_1.min_duty)/100)+servo_1.min_duty)/100;
@@ -207,7 +207,5 @@ int main() {
 	
 	vTaskStartScheduler();
 	
-	while(true){
-
-	}
+    for(;;);
 }

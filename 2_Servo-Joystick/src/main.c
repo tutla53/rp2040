@@ -85,7 +85,7 @@ static void input_task(void *args) {
 	int ch_buff = 0;
 	uint32_t val = 0;
 
-	for (;;) {
+	while(true){
 		/*Create Non-Blocking getchar -> return PICO_ERROR_TIMEOUT = -1 if No Input*/
 		while ((ch_buff = getchar_timeout_us(100)) != '\n') {
 			if(ch_buff >= '0' && ch_buff <= '9'){
@@ -111,7 +111,7 @@ static void main_task(void *args) {
 	send_value.duty_1 = 0;
 	send_value.duty_2 = 0;
 
-	for(;;) {
+	while(true) {
 		TickType_t t0 = xTaskGetTickCount();
 
 		/*Receive delay from USB*/
@@ -142,7 +142,7 @@ static void output_task(void *args) {
 	bool out_led = 1;
 	float V_Servo_1 = 0, V_Servo_2 = 0, servo_duty_1 = 0, servo_duty_2 = 0;
 
-	for (;;) {
+	while(true){
 		t0 = xTaskGetTickCount();
 		if(xQueueReceive(xQueue_USB_Out, &received_value, portMAX_DELAY) == pdPASS){
 			servo_duty_1 = (received_value.duty_1 * ((float)(servo_1.max_duty - servo_1.min_duty)/100)+servo_1.min_duty)/100;
@@ -207,5 +207,7 @@ int main() {
 	
 	vTaskStartScheduler();
 	
-    for(;;);
+    while(true){
+
+	}
 }

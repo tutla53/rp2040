@@ -19,7 +19,7 @@
 #define mainECHO_TASK_PRIORITY	(tskIDLE_PRIORITY + 1)
 /*Hardware Setup*/
 #define LED_PIN					PICO_DEFAULT_LED_PIN
-#define TEMP_SENS_PIN			4
+#define TEMP_SENS_PIN				4
 #define PWM_PIN					18 /*PWM Channel 1A*/
 #define SERVO_PIN_1				20 /*PWM Channel 2A*/
 #define SERVO_PIN_2				21 /*PWM Channel 2A*/
@@ -207,7 +207,7 @@ int main() {
 	
 	vTaskStartScheduler();
 	
-    while(true){
+	while(true){
 
 	}
 }

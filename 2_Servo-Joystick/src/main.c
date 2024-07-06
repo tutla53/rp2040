@@ -84,7 +84,7 @@ float get_duty(Servo_t *s, uint8_t adc_pin){
 
 		if (pos > 100) 	pos = 100;
 		if (pos < 0)	pos = 0;
-		s-> current_pos = pos;
+		
 		return pos;        
 }
 

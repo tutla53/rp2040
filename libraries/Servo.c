@@ -48,4 +48,5 @@ void set_servo_off(Servo_t *s){
 void set_servo_pos(Servo_t *s, float p){
     uint16_t M = (s->max_duty - s->min_duty)/100;
     set_servo_duty(s->slice, s->chan, p*M+s->min_duty);
+    s->current_pos =  p;
 }

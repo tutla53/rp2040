@@ -73,11 +73,19 @@ float get_temp(){
 	return temp;
 }
 
-float get_duty(uint8_t adc_pin){
-        adc_select_input(adc_pin);
+float get_duty(Servo_t *s, uint8_t adc_pin){
+		adc_select_input(adc_pin);
+		float inc = 0.5;
+        float pos = s->current_pos;
         uint16_t raw = adc_read();
-        float result = ((float) raw * 100)/(1<<12); /*duty 0 - 100*/
-        return result;        
+
+		if (raw < 256) pos -= inc;
+		else if (raw > 3840) pos += inc;
+
+		if (pos > 100) 	pos = 100;
+		if (pos < 0)	pos = 0;
+		s-> current_pos = pos;
+		return pos;        
 }
 
 static void input_task(void *args) {
@@ -118,9 +126,9 @@ static void main_task(void *args) {
 		xQueueReceive(xQueue_USB_In, &pos, 0U);
 
 		/*Get Duty*/
-		duty_1 = get_duty(0);
-		duty_2 = get_duty(1);
-		duty_3 = get_duty(3);
+		duty_1 = get_duty(&servo_1, 0);
+		duty_2 = get_duty(&servo_2, 1);
+		duty_3 = 50;
 		set_pwm_duty(&pwm_1, duty_3);
 
 		/*Send Pos*/
@@ -178,8 +186,8 @@ static void GPIO_SETUP_INIT(){
 	adc_set_temp_sensor_enabled(true);
 	
 	/*Servo*/
-	Servo_Init(&servo_1, SERVO_PIN_1, 0.5, 2.5, false);
-	Servo_Init(&servo_2, SERVO_PIN_2, 0.5, 2.5, false);
+	Servo_Init(&servo_1, SERVO_PIN_1, 0.5, 2.5, 50, false);
+	Servo_Init(&servo_2, SERVO_PIN_2, 0.5, 2.5, 50, false);
 	pwm_clear_irq(servo_1.slice);
 	pwm_clear_irq(servo_1.slice);
 	pwm_set_irq_enabled(servo_1.slice, true);

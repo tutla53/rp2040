@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.13)
 
 set(LIBRARY_SOURCE ../libraries)
-include(${LIBRARY_SOURCE}/pico_sdk_import.cmake)
+set(PICO_SOURCE ../pico-sdk)
+include(${PICO_SOURCE}/pico_sdk_init.cmake)
 
 project(main C CXX ASM)
 set(CMAKE_C STANDARD 11)

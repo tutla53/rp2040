@@ -13,8 +13,8 @@
 ```bash
 git clone --recurse-submodules https://github.com/tutla53/robotic-arm-rp2040.git
 ```
-1. Clone the SDK as a submodule called `pico-sdk`
-1. Setup a `CMakeLists.txt` in the project directory like:
+2. Clone the SDK as a submodule called `pico-sdk`
+3. Setup a `CMakeLists.txt` in the project directory like:
 
 ```cmake
 cmake_minimum_required(VERSION 3.13)
@@ -31,7 +31,7 @@ pico_sdk_init()
 
 # rest of your project
 ```
-3. Go to the project directory, create the build folder, and compile the software:
+4. Go to the project directory, create the build folder, and compile the software:
 ```bash
 cd {project_directory}
 mkdir build

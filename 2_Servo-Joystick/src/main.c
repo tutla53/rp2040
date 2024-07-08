@@ -25,7 +25,7 @@
 #define SERVO_PIN_2				21 /*PWM Channel 2A*/
 #define ADC_X_PIN				26
 #define ADC_Y_PIN				27
-#define ADC_PWM_PIN				28
+#define ADC_SPEED_PIN			28
 
 /*Add Servo Motor*/
 Servo_t servo_1, servo_2;
@@ -74,13 +74,18 @@ float get_temp(){
 }
 
 float get_duty(Servo_t *s, uint8_t adc_pin){
-		adc_select_input(adc_pin);
-		float inc = 0.5;
-        float pos = s->current_pos;
-        uint16_t raw = adc_read();
+		float pos = s->current_pos;
+        uint16_t raw = 0;
 
-		if (raw < 256) pos -= inc;
-		else if (raw > 3840) pos += inc;
+		adc_select_input(adc_pin);
+        raw = adc_read();
+
+		adc_select_input(2);
+        raw = adc_read();
+		float speed = ((float) raw /5120.0) + 0.1; /*0.1 - 0.9 */
+
+		if (raw < 256) pos -= speed;
+		else if (raw > 3840) pos += speed;
 
 		if (pos > 100) 	pos = 100;
 		if (pos < 0)	pos = 0;
@@ -182,7 +187,7 @@ static void GPIO_SETUP_INIT(){
 	adc_init();
 	adc_gpio_init(ADC_X_PIN);
 	adc_gpio_init(ADC_Y_PIN);
-	adc_gpio_init(ADC_PWM_PIN);
+	adc_gpio_init(ADC_SPEED_PIN);
 	adc_set_temp_sensor_enabled(true);
 	
 	/*Servo*/

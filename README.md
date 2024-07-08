@@ -3,8 +3,8 @@
 ## Software
 
 <ul>
-  <li> <a href="https://github.com/raspberrypi/pico-sdk">Raspberry Pi Pico SDK</a> </li>
-  <li> <a href="https://github.com/FreeRTOS/FreeRTOS-LTS.git">FreeRTOS-LTS</a> </li>
+  <li> <a href="https://github.com/raspberrypi/pico-sdk">Raspberry Pi Pico SDK</a> (latest stable release)</li>
+  <li> <a href="https://github.com/FreeRTOS/FreeRTOS-LTS/tree/202406-LTS">FreeRTOS-LTS</a> (v202406-LTS) </li>
   <li> <a href="https://github.com/micro-ROS/micro_ros_raspberrypi_pico_sdk.git">micro-ROS module for Raspberry Pi Pico SDK</a> (coming soon!)</li>
 </ul> 
 

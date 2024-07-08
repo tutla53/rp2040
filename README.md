@@ -15,7 +15,7 @@ git clone --recurse-submodules https://github.com/tutla53/robotic-arm-rp2040.git
 ```
 2. Set `PICO_SDK_PATH` to the SDK location in your environment
 ```bash
-echo "export PICO_SDK_PATH=$HOME/pico-sdk" >> ~/.bashrc
+echo "export PICO_SDK_PATH=../../pico-sdk" >> ~/.bashrc
 source ~/.bashrc
 ```
 3. Go to the project directory, create the build folder, and compile the software:

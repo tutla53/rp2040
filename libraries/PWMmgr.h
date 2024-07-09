@@ -3,7 +3,7 @@
 
 #define	PWM_CLOCK	125000000
 
-typedef struct {
+typedef struct PWM{
 	uint gpio;
 	uint slice;
 	uint chan;

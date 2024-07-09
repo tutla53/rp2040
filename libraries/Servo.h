@@ -4,7 +4,7 @@
 /*PWM CONFIG*/
 #define SERVO_FREQ	  		50
 
-typedef struct {
+typedef struct Servo {
 	uint gpio;
 	uint slice;
 	uint chan;

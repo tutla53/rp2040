@@ -8,6 +8,7 @@ typedef struct PWM{
 	uint slice;
 	uint chan;
 	uint resolution;
+	float current_duty;
 	bool on;
 	bool invert;
 } PWM_t;

@@ -33,6 +33,7 @@ void PWM_Init(PWM_t *s, uint gpio, uint16_t f_pwm, float duty_init, bool invert)
     s->on = false;
     s->resolution = pwm_set_freq_duty(s->slice, s->chan, f_pwm, 0);
     pwm_set_duty(s->slice, s->chan, duty_init);
+    s->current_duty = duty_init;
     if (s->chan) {
         pwm_set_output_polarity(s->slice, false, invert);
     }
@@ -54,4 +55,5 @@ void set_pwm_off(PWM_t *s){
 
 void set_pwm_duty(PWM_t *s, float d){
     pwm_set_duty(s->slice, s->chan, d);
+    s->current_duty = d;
 }

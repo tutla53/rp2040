@@ -18,7 +18,7 @@
 
 #define mainECHO_TASK_PRIORITY	(tskIDLE_PRIORITY + 1)
 /*Hardware Setup*/
-#define LED_PIN				PICO_DEFAULT_LED_PIN
+#define LED_PIN             PICO_DEFAULT_LED_PIN
 #define TEMP_SENS_PIN       4
 #define PWM_PIN             18 /*PWM Channel 1A*/
 #define SERVO_END_PIN       20 /*PWM Channel 2A*/
@@ -37,7 +37,7 @@ const float conversion_factor = 3.3f/(1<<12); /*For ADC*/
 static QueueHandle_t xQueue_USB_Out = NULL, xQueue_USB_In = NULL, xQueueServo = NULL;
 static SemaphoreHandle_t h_mutex;
 
-typedef struct {
+typedef struct Message{
     float base_duty;
     float mid_duty;
     float end_duty;
@@ -78,24 +78,24 @@ float get_temp(){
 }
 
 float get_duty(Servo_t *s, uint8_t adc_pin){
-        /*Pos 0-100*/
-        float pos = s->current_pos;
-        uint16_t raw = 0;
+    /*Pos 0-100*/
+    float pos = s->current_pos;
+    uint16_t raw = 0;
 
-        adc_select_input(adc_pin);
-        raw = adc_read();
+    adc_select_input(adc_pin);
+    raw = adc_read();
 
-        adc_select_input(2);
-        raw = adc_read();
-        float speed = ((float) raw /5120.0) + 0.1; /*0.1 - 0.9 */
+    adc_select_input(2);
+    raw = adc_read();
+    float speed = ((float) raw /5120.0) + 0.1; /*0.1 - 0.9 */
 
-        if (raw < 256) pos -= speed;
-        else if (raw > 3840) pos += speed;
+    if (raw < 256) pos -= speed;
+    else if (raw > 3840) pos += speed;
 
-        if (pos > 100) 	pos = 100;
-        if (pos < 0)	pos = 0;
+    if (pos > 100) 	pos = 100;
+    if (pos < 0)	pos = 0;
 
-        return pos;
+    return pos;
 }
 
 static void input_task(void *args) {

@@ -2,7 +2,9 @@
 	path = FreeRTOS-LTS
 	url = https://github.com/FreeRTOS/FreeRTOS-LTS.git
 	branch = 202210-LTS
+	ignore = dirty
 [submodule "pico-sdk"]
 	path = pico-sdk
 	url = https://github.com/raspberrypi/pico-sdk
 	branch = master
+	ignore = dirty

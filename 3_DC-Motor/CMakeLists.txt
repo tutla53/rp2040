@@ -13,8 +13,6 @@ pico_sdk_init()
 
 add_executable(${CMAKE_PROJECT_NAME}
     src/main.c
-	${LIBRARY_SOURCE}/Servo.c
-	${LIBRARY_SOURCE}/PWMmgr.c
 )
 
 FILE(GLOB FreeRTOS_src ${PICO_SDK_FREERTOS_SOURCE}/*.c)

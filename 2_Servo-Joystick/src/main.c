@@ -61,7 +61,7 @@ void servo_IRQ_handler(){
     Message_t d;
     pwm_clear_irq(mid_servo.slice);
     pwm_clear_irq(base_servo.slice);
-    if (xQueueReceive(xQueueServo, &d, 0U) == pdPASS){
+    if (xQueueReceive(xQueueServo, &d, 0U) == pdTRUE){
         set_servo_pos(&base_servo, d.base_duty);
         set_servo_pos(&mid_servo, d.mid_duty);
         set_servo_pos(&end_servo, d.end_duty);
@@ -80,14 +80,14 @@ float get_temp(){
 float get_duty(Servo_t *s, uint8_t adc_pin){
     /*Pos 0-100*/
     float pos = s->current_pos;
-    uint16_t raw = 0;
+    uint16_t raw = 0, raw_speed=0;
 
     adc_select_input(adc_pin);
     raw = adc_read();
 
     adc_select_input(2);
-    raw = adc_read();
-    float speed = ((float) raw /5120.0) + 0.1; /*0.1 - 0.9 */
+    raw_speed = adc_read();
+    float speed = ((float) raw_speed/5120.0) + 0.1; /*0.1 - 0.9 */
 
     if (raw < 256) pos -= speed;
     else if (raw > 3840) pos += speed;
@@ -162,7 +162,7 @@ static void output_task(void *args) {
 
     while(true){
         t0 = xTaskGetTickCount();
-        if(xQueueReceive(xQueue_USB_Out, &received_value, portMAX_DELAY) == pdPASS){
+        if(xQueueReceive(xQueue_USB_Out, &received_value, portMAX_DELAY) == pdTRUE){
             mid_servo_duty  = received_value.mid_duty;
             end_servo_duty  = received_value.end_duty;
             base_servo_duty = received_value.base_duty;

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.20)
 
 set(LIBRARY_SOURCE ../libraries)
 set(PICO_SOURCE ../pico-sdk)

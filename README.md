@@ -18,8 +18,9 @@
     ```bash
     git submodule update --init
     ```
-    > [!WARNING]  
-    > Don't recurse git submodules
+    | :warning: WARNING          |
+    |:---------------------------|
+    |Don't recurse git submodules|
 
 4. Setup a `CMakeLists.txt` in the project directory like:
 

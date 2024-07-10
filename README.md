@@ -13,8 +13,8 @@
 ```bash
 git clone https://github.com/tutla53/robotic-arm-rp2040.git
 ```
-2. Move to the SDK as a submodule called `pico-sdk`
-3. Update the submodulse
+2. Move to the SDK and FreeRTOS-LTS as a submodule `pico-sdk` and `FreeRTOS-LTS`
+3. Initialize and update the submodule
 ```bash
 git submodule update --init
 ```

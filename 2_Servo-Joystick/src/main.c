@@ -61,7 +61,7 @@ void servo_IRQ_handler(){
     Message_t d;
     pwm_clear_irq(mid_servo.slice);
     pwm_clear_irq(base_servo.slice);
-    if (xQueueReceive(xQueueServo, &d, 0U) == pdPASS ){
+    if (xQueueReceive(xQueueServo, &d, 0U) == pdPASS){
         set_servo_pos(&base_servo, d.base_duty);
         set_servo_pos(&mid_servo, d.mid_duty);
         set_servo_pos(&end_servo, d.end_duty);
@@ -198,20 +198,18 @@ static void GPIO_SETUP_INIT(){
     Servo_Init(&mid_servo, SERVO_END_PIN, 0.5, 2.5, 50, false);
     Servo_Init(&end_servo, SERVO_MID_PIN, 0.5, 2.5, 50, false);
     Servo_Init(&base_servo, SERVO_BASE_PIN, 0.5, 2.5, 50, false);
-
-    pwm_clear_irq(mid_servo.slice);
-    pwm_set_irq_enabled(mid_servo.slice, true);
-
-    pwm_clear_irq(base_servo.slice);
-    pwm_set_irq_enabled(base_servo.slice, true);
-
-    irq_set_exclusive_handler(PWM_IRQ_WRAP, servo_IRQ_handler);
-
-    irq_set_enabled(PWM_IRQ_WRAP, true);
     set_servo_on(&mid_servo);
     set_servo_on(&end_servo);
     set_servo_on(&base_servo);
 
+    uint32_t slice_mask = 0;
+    slice_mask = (1<<(mid_servo.slice))|(1<<(base_servo.slice));
+    pwm_clear_irq(mid_servo.slice);
+    pwm_clear_irq(base_servo.slice);
+    pwm_set_irq_mask_enabled(slice_mask, true);
+    irq_set_exclusive_handler(PWM_IRQ_WRAP, servo_IRQ_handler);
+    irq_set_enabled(PWM_IRQ_WRAP, true);
+    
     /*PWM*/
     PWM_Init(&pwm_1, PWM_PIN, 1000, 72.5, false);
     set_pwm_on(&pwm_1);

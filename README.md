@@ -10,38 +10,39 @@
 
 ## Getting Started
 1. `git clone` this repository
-```bash
-git clone https://github.com/tutla53/robotic-arm-rp2040.git
-```
+    ```bash
+    git clone https://github.com/tutla53/robotic-arm-rp2040.git
+    ```
 2. Move to the SDK and FreeRTOS-LTS as a submodule `pico-sdk` and `FreeRTOS-LTS`
 3. Initialize and update the submodule
-> [!WARNING]  
-> Don't recurse git submodules
-```bash
-git submodule update --init
-```
+    ```bash
+    git submodule update --init
+    ```
+    > [!WARNING]  
+    > Don't recurse git submodules
+
 4. Setup a `CMakeLists.txt` in the project directory like:
 
-```cmake
-cmake_minimum_required(VERSION 3.13)
+    ```cmake
+    cmake_minimum_required(VERSION 3.13)
 
-# initialize pico-sdk from submodule
-# note: this must happen before project()
-set(PICO_SOURCE ../pico-sdk)
-include(${PICO_SOURCE}/pico_sdk_init.cmake)
+    # initialize pico-sdk from submodule
+    # note: this must happen before project()
+    set(PICO_SOURCE ../pico-sdk)
+    include(${PICO_SOURCE}/pico_sdk_init.cmake)
 
-project(my_project)
+    project(my_project)
 
-# initialize the Raspberry Pi Pico SDK
-pico_sdk_init()
+    # initialize the Raspberry Pi Pico SDK
+    pico_sdk_init()
 
-# rest of your project
-```
+    # rest of your project
+    ```
 5. Go to the project directory, create the build folder, and compile the software:
-```bash
-cd {project_directory}
-mkdir build
-cd build
-cmake ..
-make -j4
-```
+    ```bash
+    cd {project_directory}
+    mkdir build
+    cd build
+    cmake ..
+    make -j4
+    ```

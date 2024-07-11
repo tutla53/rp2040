@@ -19,7 +19,7 @@ static inline uint32_t get_pwm_wrap(uint slice_num){
 }
 
 static inline void pwm_set_duty(uint slice_num, uint chan, float d){
-    pwm_set_chan_level(slice_num,chan,get_pwm_wrap(slice_num)*d/100);
+    pwm_set_chan_level(slice_num,chan,get_pwm_wrap(slice_num)*d/100.0);
 }
 
 static inline uint32_t pwm_set_freq_duty(uint slice_num,uint chan, uint32_t f, int d){
@@ -32,6 +32,21 @@ static inline uint32_t pwm_set_freq_duty(uint slice_num,uint chan, uint32_t f, i
     pwm_set_wrap(slice_num, wrap);
     pwm_set_chan_level(slice_num, chan, wrap * d / 100);
     return wrap;
+}
+
+static inline void set_pwm_on(PWM_t *s){
+    pwm_set_enabled(s->slice, true);
+    s->on = true;
+}
+
+static inline void set_pwm_off(PWM_t *s){
+    pwm_set_enabled(s->slice, false);
+    s->on = false;
+} 
+
+static inline void set_pwm_duty(PWM_t *s, float d){
+    s->current_duty = d;
+    pwm_set_duty(s->slice, s->chan, d);
 }
 
 static inline void PWM_Init(PWM_t *s, uint gpio, uint16_t f_pwm, float duty_init, bool invert){
@@ -51,21 +66,6 @@ static inline void PWM_Init(PWM_t *s, uint gpio, uint16_t f_pwm, float duty_init
         pwm_set_output_polarity(s->slice, invert, false);
     }
     s->invert = invert;
-}
-
-static inline void set_pwm_on(PWM_t *s){
-    pwm_set_enabled(s->slice, true);
-    s->on = true;
-}
-
-static inline void set_pwm_off(PWM_t *s){
-    pwm_set_enabled(s->slice, false);
-    s->on = false;
-} 
-
-static inline void set_pwm_duty(PWM_t *s, float d){
-    pwm_set_duty(s->slice, s->chan, d);
-    s->current_duty = d;
 }
 
 #endif

@@ -29,7 +29,7 @@
 #define ADC_SPEED_PIN       28 /*ADC 2*/
 
 /*Add Servo Motor*/
-Servo_t ServoMid, ServoEnd, ServoBase;
+Servo_t mtrServoMid, mtrServoEnd, mtrServoBase;
 PWM_t	pwm_1;
 
 const float conversion_factor = 3.3f/(1<<12); /*For ADC*/
@@ -61,12 +61,12 @@ int map(int s, int a1, int a2, int b1, int b2) {
 
 void servo_IRQ_handler(){
     Message_t* pxDuty;
-    pwm_clear_irq(ServoMid.slice);
-    pwm_clear_irq(ServoBase.slice);
+    pwm_clear_irq(mtrServoMid.slice);
+    pwm_clear_irq(mtrServoBase.slice);
     if (xQueueReceive(xQueueServo, &pxDuty, 0U) == pdTRUE){
-        set_servo_pos(&ServoBase, pxDuty->base_duty);
-        set_servo_pos(&ServoMid, pxDuty->mid_duty);
-        set_servo_pos(&ServoEnd, pxDuty->end_duty);
+        set_servo_pos(&mtrServoBase, pxDuty->base_duty);
+        set_servo_pos(&mtrServoMid, pxDuty->mid_duty);
+        set_servo_pos(&mtrServoEnd, pxDuty->end_duty);
     }
 }
 
@@ -136,9 +136,9 @@ static void main_task(void *args) {
         xQueueReceive(xQueue_USB_In, &del, 0U);
 
         /*Get Duty*/
-        base_duty = get_duty(&ServoBase, 0);
-        mid_duty = get_duty(&ServoMid, 1);
-        end_duty = 50;
+        base_duty   = get_duty(&mtrServoBase, 0);
+        mid_duty    = get_duty(&mtrServoMid, 1);
+        end_duty    = 50;
 
         /*Send Pos*/
         xServoMessage.base_duty = base_duty;
@@ -191,21 +191,21 @@ static void GPIO_SETUP_INIT(){
     adc_set_temp_sensor_enabled(true);
 
     /*Servo*/
-    Servo_Init(&ServoMid, SERVO_END_PIN, 0.5, 2.5, 50, false);
-    Servo_Init(&ServoEnd, SERVO_MID_PIN, 0.5, 2.5, 50, false);
-    Servo_Init(&ServoBase, SERVO_BASE_PIN, 0.5, 2.5, 50, false);
+    Servo_Init(&mtrServoMid, SERVO_END_PIN, 0.5, 2.5, 50, false);
+    Servo_Init(&mtrServoEnd, SERVO_MID_PIN, 0.5, 2.5, 50, false);
+    Servo_Init(&mtrServoBase, SERVO_BASE_PIN, 0.5, 2.5, 50, false);
 
     uint32_t slice_mask = 0;
-    slice_mask = (1<<(ServoMid.slice))|(1<<(ServoBase.slice));
-    pwm_clear_irq(ServoMid.slice);
-    pwm_clear_irq(ServoBase.slice);
+    slice_mask = (1<<(mtrServoMid.slice))|(1<<(mtrServoBase.slice));
+    pwm_clear_irq(mtrServoMid.slice);
+    pwm_clear_irq(mtrServoBase.slice);
     pwm_set_irq_mask_enabled(slice_mask, true);
     irq_set_exclusive_handler(PWM_IRQ_WRAP, servo_IRQ_handler);
     irq_set_enabled(PWM_IRQ_WRAP, true);
 
-    set_servo_on(&ServoMid);
-    set_servo_on(&ServoEnd);
-    set_servo_on(&ServoBase);
+    set_servo_on(&mtrServoMid);
+    set_servo_on(&mtrServoEnd);
+    set_servo_on(&mtrServoBase);
     
     /*PWM*/
     PWM_Init(&pwm_1, PWM_PIN, 1000, 72.5, false);

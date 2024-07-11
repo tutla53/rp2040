@@ -17,6 +17,7 @@
 #include "PWMmgr.h"
 
 #define mainECHO_TASK_PRIORITY	(tskIDLE_PRIORITY + 1)
+
 /*Hardware Setup*/
 #define LED_PIN             PICO_DEFAULT_LED_PIN
 #define TEMP_SENS_PIN       4
@@ -28,30 +29,29 @@
 #define ADC_Y_PIN           27 /*ADC 1*/
 #define ADC_SPEED_PIN       28 /*ADC 2*/
 
-/*Add Servo Motor*/
-Servo_t mtrServoMid, mtrServoEnd, mtrServoBase;
-PWM_t	pwm_1;
-
-const float conversion_factor = 3.3f/(1<<12); /*For ADC*/
-
-static QueueHandle_t xQueue_USB_Out = NULL, xQueue_USB_In = NULL, xQueueServo = NULL;
-static SemaphoreHandle_t h_mutex;
-
 typedef struct Message{
     float base_duty;
     float mid_duty;
     float end_duty;
 } Message_t;
 
+/*Add Servo Motor*/
+Servo_t mtrServoMid, mtrServoEnd, mtrServoBase;
 Message_t xServoMessage;
+PWM_t	pwm_1;
 
+static QueueHandle_t xQueue_USB_Out = NULL, xQueue_USB_In = NULL, xQueueServo = NULL;
+static SemaphoreHandle_t h_mutex;
+
+const float adc_volt_per_unit = 3.3f/(1<<12); /*For ADC*/
+
+/* Prevents competing tasks from printing in the middle of our own line of text*/
 static void mutex_lock(void) {
-    // prevents competing tasks from printing in the middle of our own line of text
     xSemaphoreTake(h_mutex,portMAX_DELAY);
 }
 
+/* Prevents competing tasks from printing in the middle of our own line of text*/
 static void mutex_unlock(void) {
-    // prevents competing tasks from printing in the middle of our own line of text
     xSemaphoreGive(h_mutex);
 }
 
@@ -59,14 +59,14 @@ int map(int s, int a1, int a2, int b1, int b2) {
     return b1 + (s - a1) * (b2 - b1) / (a2 - a1);
 }
 
-void servo_IRQ_handler(){
+void vHandlerServoIRQ(){
     Message_t* pxDuty;
     pwm_clear_irq(mtrServoMid.slice);
     pwm_clear_irq(mtrServoBase.slice);
     if (xQueueReceive(xQueueServo, &pxDuty, 0U) == pdTRUE){
-        set_servo_pos(&mtrServoBase, pxDuty->base_duty);
-        set_servo_pos(&mtrServoMid, pxDuty->mid_duty);
-        set_servo_pos(&mtrServoEnd, pxDuty->end_duty);
+        vServoSetPos(&mtrServoBase, pxDuty->base_duty);
+        vServoSetPos(&mtrServoMid, pxDuty->mid_duty);
+        vServoSetPos(&mtrServoEnd, pxDuty->end_duty);
     }
 }
 
@@ -74,8 +74,8 @@ float get_temp(){
     adc_select_input(TEMP_SENS_PIN);
     uint16_t raw = adc_read();
 
-    float result = raw * conversion_factor;
-    float temp = 27 - (result-0.706)/0.001721;
+    float temp_volt = raw * adc_volt_per_unit;
+    float temp = 27 - (temp_volt-0.706)/0.001721;
     return temp;
 }
 
@@ -94,8 +94,8 @@ float get_duty(Servo_t *s, uint8_t adc_pin){
     if (raw < 256) pos -= speed;
     else if (raw > 3840) pos += speed;
 
-    if (pos > 100) 	pos = 100;
-    if (pos < 0)	pos = 0;
+    if (pos > 100)  pos = 100;
+    if (pos < 0)    pos = 0;
 
     return pos;
 }
@@ -127,7 +127,6 @@ static void main_task(void *args) {
     (void)args;
     Message_t* pxToxServoMessage;
     uint16_t del = 10;
-    float mid_duty = 0, end_duty = 0, base_duty=0;
 
     while(true) {
         TickType_t t0 = xTaskGetTickCount();
@@ -136,17 +135,12 @@ static void main_task(void *args) {
         xQueueReceive(xQueue_USB_In, &del, 0U);
 
         /*Get Duty*/
-        base_duty   = get_duty(&mtrServoBase, 0);
-        mid_duty    = get_duty(&mtrServoMid, 1);
-        end_duty    = 50;
-
-        /*Send Pos*/
-        xServoMessage.base_duty = base_duty;
-        xServoMessage.mid_duty = mid_duty;
-        xServoMessage.end_duty = end_duty;
-        pxToxServoMessage = &xServoMessage;
+        xServoMessage.base_duty = get_duty(&mtrServoBase, 0);
+        xServoMessage.mid_duty  = get_duty(&mtrServoMid, 1);
+        xServoMessage.end_duty  = 50;
 
         /*Send the time value to USB*/
+        pxToxServoMessage = &xServoMessage;
         xQueueSend(xQueue_USB_Out, &pxToxServoMessage, 0U);
         xQueueSend(xQueueServo, &pxToxServoMessage, 0U);
 
@@ -168,7 +162,7 @@ static void output_task(void *args) {
 
             mutex_lock();
             printf("base_d:%.2f, mid_d:%.2f, end_d:%.2f, t:%lu\n",
-                    pxDuty->mid_duty, pxDuty->end_duty, pxDuty->base_duty, xTaskGetTickCount()-t0);
+                    pxDuty->base_duty, pxDuty->mid_duty, pxDuty->end_duty, xTaskGetTickCount()-t0);
             mutex_unlock();
         }
     }
@@ -188,28 +182,28 @@ static void GPIO_SETUP_INIT(){
     adc_gpio_init(ADC_X_PIN);
     adc_gpio_init(ADC_Y_PIN);
     adc_gpio_init(ADC_SPEED_PIN);
-    adc_set_temp_sensor_enabled(true);
+    adc_set_temp_sensor_enabled(false);
 
     /*Servo*/
-    Servo_Init(&mtrServoMid, SERVO_END_PIN, 0.5, 2.5, 50, false);
-    Servo_Init(&mtrServoEnd, SERVO_MID_PIN, 0.5, 2.5, 50, false);
-    Servo_Init(&mtrServoBase, SERVO_BASE_PIN, 0.5, 2.5, 50, false);
+    vServoInit(&mtrServoMid, SERVO_END_PIN, 0.5, 2.5, 50, false);
+    vServoInit(&mtrServoEnd, SERVO_MID_PIN, 0.5, 2.5, 50, false);
+    vServoInit(&mtrServoBase, SERVO_BASE_PIN, 0.5, 2.5, 50, false);
 
-    uint32_t slice_mask = 0;
-    slice_mask = (1<<(mtrServoMid.slice))|(1<<(mtrServoBase.slice));
+    uint32_t pwm_slice_mask = 0;
+    pwm_slice_mask = (1<<(mtrServoMid.slice))|(1<<(mtrServoBase.slice));
     pwm_clear_irq(mtrServoMid.slice);
     pwm_clear_irq(mtrServoBase.slice);
-    pwm_set_irq_mask_enabled(slice_mask, true);
-    irq_set_exclusive_handler(PWM_IRQ_WRAP, servo_IRQ_handler);
+    pwm_set_irq_mask_enabled(pwm_slice_mask, true);
+    irq_set_exclusive_handler(PWM_IRQ_WRAP, vHandlerServoIRQ);
     irq_set_enabled(PWM_IRQ_WRAP, true);
 
-    set_servo_on(&mtrServoMid);
-    set_servo_on(&mtrServoEnd);
-    set_servo_on(&mtrServoBase);
+    vServo_on(&mtrServoMid);
+    vServo_on(&mtrServoEnd);
+    vServo_on(&mtrServoBase);
     
     /*PWM*/
-    PWM_Init(&pwm_1, PWM_PIN, 1000, 72.5, false);
-    set_pwm_on(&pwm_1);
+    vPWM_Init(&pwm_1, PWM_PIN, 1000, 72.5, false);
+    vPWM_on(&pwm_1);
 }
 
 int main() {

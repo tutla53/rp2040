@@ -29,7 +29,7 @@
 #define ADC_SPEED_PIN       28 /*ADC 2*/
 
 /*Add Servo Motor*/
-Servo_t mid_servo, end_servo, base_servo;
+Servo_t ServoMid, ServoEnd, ServoBase;
 PWM_t	pwm_1;
 
 const float conversion_factor = 3.3f/(1<<12); /*For ADC*/
@@ -42,6 +42,8 @@ typedef struct Message{
     float mid_duty;
     float end_duty;
 } Message_t;
+
+Message_t xServoMessage;
 
 static void mutex_lock(void) {
     // prevents competing tasks from printing in the middle of our own line of text
@@ -58,13 +60,13 @@ int map(int s, int a1, int a2, int b1, int b2) {
 }
 
 void servo_IRQ_handler(){
-    Message_t d;
-    pwm_clear_irq(mid_servo.slice);
-    pwm_clear_irq(base_servo.slice);
-    if (xQueueReceive(xQueueServo, &d, 0U) == pdTRUE){
-        set_servo_pos(&base_servo, d.base_duty);
-        set_servo_pos(&mid_servo, d.mid_duty);
-        set_servo_pos(&end_servo, d.end_duty);
+    Message_t* pxDuty;
+    pwm_clear_irq(ServoMid.slice);
+    pwm_clear_irq(ServoBase.slice);
+    if (xQueueReceive(xQueueServo, &pxDuty, 0U) == pdTRUE){
+        set_servo_pos(&ServoBase, pxDuty->base_duty);
+        set_servo_pos(&ServoMid, pxDuty->mid_duty);
+        set_servo_pos(&ServoEnd, pxDuty->end_duty);
     }
 }
 
@@ -123,56 +125,50 @@ static void input_task(void *args) {
 static void main_task(void *args) {
     /*It will be changed to ISR*/
     (void)args;
-    Message_t send_value;
-    uint16_t pos = 10;
+    Message_t* pxToxServoMessage;
+    uint16_t del = 10;
     float mid_duty = 0, end_duty = 0, base_duty=0;
-    send_value.mid_duty = 0;
-    send_value.end_duty = 0;
 
     while(true) {
         TickType_t t0 = xTaskGetTickCount();
 
         /*Receive delay from USB*/
-        xQueueReceive(xQueue_USB_In, &pos, 0U);
+        xQueueReceive(xQueue_USB_In, &del, 0U);
 
         /*Get Duty*/
-        base_duty = get_duty(&base_servo, 0);
-        mid_duty = get_duty(&mid_servo, 1);
+        base_duty = get_duty(&ServoBase, 0);
+        mid_duty = get_duty(&ServoMid, 1);
         end_duty = 50;
 
         /*Send Pos*/
-        send_value.base_duty = base_duty;
-        send_value.mid_duty = mid_duty;
-        send_value.end_duty = end_duty;
+        xServoMessage.base_duty = base_duty;
+        xServoMessage.mid_duty = mid_duty;
+        xServoMessage.end_duty = end_duty;
+        pxToxServoMessage = &xServoMessage;
 
         /*Send the time value to USB*/
-        xQueueSend(xQueue_USB_Out, &send_value, 0U);
-        xQueueSend(xQueueServo, &send_value, 0U);
+        xQueueSend(xQueue_USB_Out, &pxToxServoMessage, 0U);
+        xQueueSend(xQueueServo, &pxToxServoMessage, 0U);
 
-        vTaskDelay(pdMS_TO_TICKS(pos));
+        vTaskDelay(pdMS_TO_TICKS(del));
     }
 }
 
 static void output_task(void *args) {
     (void)args;
     TickType_t t0 = 0;
-    Message_t received_value;
+    Message_t* pxDuty;
     bool out_led = 1;
-    float base_servo_duty = 0, mid_servo_duty = 0, end_servo_duty = 0;
 
     while(true){
         t0 = xTaskGetTickCount();
-        if(xQueueReceive(xQueue_USB_Out, &received_value, portMAX_DELAY) == pdTRUE){
-            mid_servo_duty  = received_value.mid_duty;
-            end_servo_duty  = received_value.end_duty;
-            base_servo_duty = received_value.base_duty;
-
+        if(xQueueReceive(xQueue_USB_Out, &pxDuty, portMAX_DELAY) == pdTRUE){
             gpio_put(LED_PIN, out_led);
             out_led = !out_led;
 
             mutex_lock();
-            printf("base_d:%.2f, mid_d:%.2f, end_d:%.2f\n",
-                    base_servo_duty, mid_servo_duty, end_servo_duty);
+            printf("base_d:%.2f, mid_d:%.2f, end_d:%.2f, t:%lu\n",
+                    pxDuty->mid_duty, pxDuty->end_duty, pxDuty->base_duty, xTaskGetTickCount()-t0);
             mutex_unlock();
         }
     }
@@ -195,20 +191,21 @@ static void GPIO_SETUP_INIT(){
     adc_set_temp_sensor_enabled(true);
 
     /*Servo*/
-    Servo_Init(&mid_servo, SERVO_END_PIN, 0.5, 2.5, 50, false);
-    Servo_Init(&end_servo, SERVO_MID_PIN, 0.5, 2.5, 50, false);
-    Servo_Init(&base_servo, SERVO_BASE_PIN, 0.5, 2.5, 50, false);
-    set_servo_on(&mid_servo);
-    set_servo_on(&end_servo);
-    set_servo_on(&base_servo);
+    Servo_Init(&ServoMid, SERVO_END_PIN, 0.5, 2.5, 50, false);
+    Servo_Init(&ServoEnd, SERVO_MID_PIN, 0.5, 2.5, 50, false);
+    Servo_Init(&ServoBase, SERVO_BASE_PIN, 0.5, 2.5, 50, false);
 
     uint32_t slice_mask = 0;
-    slice_mask = (1<<(mid_servo.slice))|(1<<(base_servo.slice));
-    pwm_clear_irq(mid_servo.slice);
-    pwm_clear_irq(base_servo.slice);
+    slice_mask = (1<<(ServoMid.slice))|(1<<(ServoBase.slice));
+    pwm_clear_irq(ServoMid.slice);
+    pwm_clear_irq(ServoBase.slice);
     pwm_set_irq_mask_enabled(slice_mask, true);
     irq_set_exclusive_handler(PWM_IRQ_WRAP, servo_IRQ_handler);
     irq_set_enabled(PWM_IRQ_WRAP, true);
+
+    set_servo_on(&ServoMid);
+    set_servo_on(&ServoEnd);
+    set_servo_on(&ServoBase);
     
     /*PWM*/
     PWM_Init(&pwm_1, PWM_PIN, 1000, 72.5, false);
@@ -218,10 +215,10 @@ static void GPIO_SETUP_INIT(){
 int main() {
     GPIO_SETUP_INIT();
 
-    xQueue_USB_Out  = xQueueCreate(10, sizeof(Message_t));
+    xQueue_USB_Out  = xQueueCreate(10, sizeof(Message_t*));
     xQueue_USB_In   = xQueueCreate(10, sizeof(uint32_t));
-    xQueueServo = xQueueCreate(10, sizeof(Message_t));
-    h_mutex = xSemaphoreCreateMutex();
+    xQueueServo     = xQueueCreate(10, sizeof(Message_t*));
+    h_mutex         = xSemaphoreCreateMutex();
 
     xTaskCreate(main_task,"main_task",400,NULL,configMAX_PRIORITIES-1,NULL);
     xTaskCreate(input_task,"input_task",400,NULL,tskIDLE_PRIORITY,NULL);

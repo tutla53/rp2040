@@ -29,11 +29,17 @@ static inline void vServo_off(Servo_t *pxServo){
     pxServo->on = false;
 } 
 
-static inline void vServoSetPos(Servo_t *pxServo, float pos){
+static inline float xPosToDuty(Servo_t *pxServo, float pos){
     float duty = pos*((pxServo->max_duty - pxServo->min_duty)/100.0)+pxServo->min_duty;
+    return duty;
+}
+
+static inline void vServoSetPos(Servo_t *pxServo, float pos){
+    if (pos>100) pos = 100;
+    if (pos<0) pos = 0;
     pxServo->current_pos =  pos;
-    if (duty>100) duty = 100;
-    if (duty<0) duty = 0;
+    
+    float duty = xPosToDuty(pxServo, pos);
     pwm_set_chan_level(pxServo->slice, pxServo->chan, uPWM_GetWrap(pxServo->slice)*duty/100.0);
 }
 

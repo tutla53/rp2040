@@ -209,9 +209,9 @@ static void GPIO_SETUP_INIT(){
 int main() {
     GPIO_SETUP_INIT();
 
-    xQueue_USB_Out  = xQueueCreate(10, sizeof(Message_t*));
-    xQueue_USB_In   = xQueueCreate(10, sizeof(uint32_t));
-    xQueueServo     = xQueueCreate(10, sizeof(Message_t*));
+    xQueue_USB_Out  = xQueueCreate(5, sizeof(Message_t*));
+    xQueue_USB_In   = xQueueCreate(5, sizeof(uint32_t));
+    xQueueServo     = xQueueCreate(5, sizeof(Message_t*));
     h_mutex         = xSemaphoreCreateMutex();
 
     xTaskCreate(main_task,"main_task",400,NULL,configMAX_PRIORITIES-1,NULL);

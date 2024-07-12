@@ -137,7 +137,7 @@ static void main_task(void *args) {
         /*Get Duty*/
         xServoMessage.base_duty = get_duty(&mtrServoBase, 0);
         xServoMessage.mid_duty  = get_duty(&mtrServoMid, 1);
-        xServoMessage.end_duty  = 50;
+        xServoMessage.end_duty  = 40.0+mtrServoMid.current_pos;
 
         /*Send the time value to USB*/
         pxToxServoMessage = &xServoMessage;

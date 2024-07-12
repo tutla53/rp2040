@@ -32,6 +32,8 @@ static inline void vServo_off(Servo_t *pxServo){
 static inline void vServoSetPos(Servo_t *pxServo, float pos){
     float duty = pos*((pxServo->max_duty - pxServo->min_duty)/100.0)+pxServo->min_duty;
     pxServo->current_pos =  pos;
+    if (duty>100) duty = 100;
+    if (duty<0) duty = 0;
     pwm_set_chan_level(pxServo->slice, pxServo->chan, uPWM_GetWrap(pxServo->slice)*duty/100.0);
 }
 

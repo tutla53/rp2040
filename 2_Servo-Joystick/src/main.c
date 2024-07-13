@@ -21,9 +21,8 @@
 /*Hardware Setup*/
 #define LED_PIN             PICO_DEFAULT_LED_PIN
 #define TEMP_SENS_PIN       4
-#define PWM_PIN             18 /*PWM Channel 1A*/
+#define SERVO_MID_PIN       18 /*PWM Channel 1A*/
 #define SERVO_END_PIN       20 /*PWM Channel 2A*/
-#define SERVO_MID_PIN       21 /*PWM Channel 2A*/
 #define SERVO_BASE_PIN      22 /*PWM Channel 3A*/
 #define ADC_X_PIN           26 /*ADC 0*/
 #define ADC_Y_PIN           27 /*ADC 1*/
@@ -61,11 +60,14 @@ int map(int s, int a1, int a2, int b1, int b2) {
 
 void vHandlerServoIRQ(){
     Message_t* pxDuty;
-    pwm_clear_irq(mtrServoMid.slice);
-    pwm_clear_irq(mtrServoBase.slice);
     if (xQueueReceive(xQueueServo, &pxDuty, 0U) == pdTRUE){
+        pwm_clear_irq(mtrServoBase.slice);
         vServoSetPos(&mtrServoBase, pxDuty->base_duty);
+
+        pwm_clear_irq(mtrServoMid.slice);
         vServoSetPos(&mtrServoMid, pxDuty->mid_duty);
+
+        pwm_clear_irq(mtrServoEnd.slice);
         vServoSetPos(&mtrServoEnd, pxDuty->end_duty);
     }
 }
@@ -137,7 +139,7 @@ static void main_task(void *args) {
         /*Get Duty*/
         xServoMessage.base_duty = get_duty(&mtrServoBase, 0);
         xServoMessage.mid_duty  = get_duty(&mtrServoMid, 1);
-        xServoMessage.end_duty  = 40.0 + xServoMessage.mid_duty;
+        xServoMessage.end_duty  = 3 + xServoMessage.mid_duty;
 
         /*Send the time value to USB*/
         pxToxServoMessage = &xServoMessage;
@@ -185,14 +187,15 @@ static void GPIO_SETUP_INIT(){
     adc_set_temp_sensor_enabled(false);
 
     /*Servo*/
-    vServoInit(&mtrServoMid, SERVO_END_PIN, 0.5, 2.5, 50, false);
-    vServoInit(&mtrServoEnd, SERVO_MID_PIN, 0.5, 2.5, 50, false);
+    vServoInit(&mtrServoMid, SERVO_MID_PIN, 0.5, 2.5, 0, false);
+    vServoInit(&mtrServoEnd, SERVO_END_PIN, 0.5, 2.5, 3, false);
     vServoInit(&mtrServoBase, SERVO_BASE_PIN, 0.5, 2.5, 50, false);
 
     uint32_t pwm_slice_mask = 0;
-    pwm_slice_mask = (1<<(mtrServoMid.slice))|(1<<(mtrServoBase.slice));
+    pwm_slice_mask = (1<<(mtrServoMid.slice))|(1<<(mtrServoBase.slice))|(1<<(mtrServoEnd.slice));
     pwm_clear_irq(mtrServoMid.slice);
     pwm_clear_irq(mtrServoBase.slice);
+    pwm_clear_irq(mtrServoEnd.slice);
     pwm_set_irq_mask_enabled(pwm_slice_mask, true);
     irq_set_exclusive_handler(PWM_IRQ_WRAP, vHandlerServoIRQ);
     irq_set_enabled(PWM_IRQ_WRAP, true);
@@ -200,10 +203,6 @@ static void GPIO_SETUP_INIT(){
     vServo_on(&mtrServoMid);
     vServo_on(&mtrServoEnd);
     vServo_on(&mtrServoBase);
-    
-    /*PWM*/
-    vPWM_Init(&pwm_1, PWM_PIN, 1000, 72.5, false);
-    vPWM_on(&pwm_1);
 }
 
 int main() {
@@ -211,7 +210,7 @@ int main() {
 
     xQueue_USB_Out  = xQueueCreate(5, sizeof(Message_t*));
     xQueue_USB_In   = xQueueCreate(5, sizeof(uint32_t));
-    xQueueServo     = xQueueCreate(5, sizeof(Message_t*));
+    xQueueServo     = xQueueCreate(20, sizeof(Message_t*));
     h_mutex         = xSemaphoreCreateMutex();
 
     xTaskCreate(main_task,"main_task",400,NULL,configMAX_PRIORITIES-1,NULL);

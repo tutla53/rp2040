@@ -60,14 +60,13 @@ int map(int s, int a1, int a2, int b1, int b2) {
 
 void vHandlerServoIRQ(){
     Message_t* pxDuty;
+    pwm_clear_irq(mtrServoBase.slice);
+    pwm_clear_irq(mtrServoMid.slice);
+    pwm_clear_irq(mtrServoEnd.slice);
+
     if (xQueueReceive(xQueueServo, &pxDuty, 0U) == pdTRUE){
-        pwm_clear_irq(mtrServoBase.slice);
         vServoSetPos(&mtrServoBase, pxDuty->base_duty);
-
-        pwm_clear_irq(mtrServoMid.slice);
         vServoSetPos(&mtrServoMid, pxDuty->mid_duty);
-
-        pwm_clear_irq(mtrServoEnd.slice);
         vServoSetPos(&mtrServoEnd, pxDuty->end_duty);
     }
 }
@@ -129,9 +128,10 @@ static void main_task(void *args) {
     (void)args;
     Message_t* pxToxServoMessage;
     uint16_t del = 10;
+    TickType_t t0 = 0;
 
     while(true) {
-        TickType_t t0 = xTaskGetTickCount();
+        t0 = xTaskGetTickCount();
 
         /*Receive delay from USB*/
         xQueueReceive(xQueue_USB_In, &del, 0U);
@@ -143,28 +143,32 @@ static void main_task(void *args) {
 
         /*Send the time value to USB*/
         pxToxServoMessage = &xServoMessage;
-        xQueueSend(xQueue_USB_Out, &pxToxServoMessage, 0U);
-        // xQueueSend(xQueueServo, &pxToxServoMessage, 0U);
+        xQueueSend(xQueueServo, &pxToxServoMessage, 0U);
 
         vTaskDelay(pdMS_TO_TICKS(del));
+        t0 = xTaskGetTickCount()-t0;
+        xQueueSend(xQueue_USB_Out, &t0, 0U);
     }
 }
 
 static void output_task(void *args) {
     (void)args;
-    TickType_t t0 = 0;
-    Message_t* pxDuty;
+    TickType_t t0 = 0, t_rx = 0;
     bool out_led = 1;
 
     while(true){
         t0 = xTaskGetTickCount();
-        if(xQueueReceive(xQueue_USB_Out, &pxDuty, portMAX_DELAY) == pdTRUE){
+        if(xQueueReceive(xQueue_USB_Out, &t_rx, portMAX_DELAY) == pdTRUE){
             cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, out_led);
             out_led = !out_led;
 
             mutex_lock();
-            printf("base_d:%.2f, mid_d:%.2f, end_d:%.2f, t:%lu\n",
-                    pxDuty->base_duty, pxDuty->mid_duty, pxDuty->end_duty, xTaskGetTickCount()-t0);
+            printf("b_d:%.2f, m_d:%.2f, e_d:%.2f, t:%lu, t_rx:%lu\n",
+                    mtrServoBase.current_pos, 
+                    mtrServoMid.current_pos, 
+                    mtrServoEnd.current_pos, 
+                    xTaskGetTickCount()-t0,
+                    t_rx);
             mutex_unlock();
         }
     }
@@ -183,14 +187,15 @@ static void GPIO_SETUP_INIT(){
     vServoInit(&mtrServoEnd, SERVO_END_PIN, 0.5, 2.5, 3, false);
     vServoInit(&mtrServoBase, SERVO_BASE_PIN, 0.5, 2.5, 50, false);
 
-    // uint32_t pwm_slice_mask = 0;
-    // pwm_slice_mask = (1<<(mtrServoMid.slice))|(1<<(mtrServoBase.slice))|(1<<(mtrServoEnd.slice));
-    // pwm_clear_irq(mtrServoMid.slice);
-    // pwm_clear_irq(mtrServoBase.slice);
-    // pwm_clear_irq(mtrServoEnd.slice);
-    // pwm_set_irq_mask_enabled(pwm_slice_mask, true);
-    // irq_set_exclusive_handler(PWM_IRQ_WRAP, vHandlerServoIRQ);
-    // irq_set_enabled(PWM_IRQ_WRAP, true);
+    /*Servo IRQ Setting */
+    uint32_t pwm_slice_mask = 0;
+    pwm_slice_mask = (1<<(mtrServoMid.slice))|(1<<(mtrServoBase.slice))|(1<<(mtrServoEnd.slice));
+    pwm_clear_irq(mtrServoMid.slice);
+    pwm_clear_irq(mtrServoBase.slice);
+    pwm_clear_irq(mtrServoEnd.slice);
+    pwm_set_irq_mask_enabled(pwm_slice_mask, true);
+    irq_set_exclusive_handler(PWM_IRQ_WRAP, vHandlerServoIRQ);
+    irq_set_enabled(PWM_IRQ_WRAP, true);
 
     vServo_on(&mtrServoMid);
     vServo_on(&mtrServoEnd);
@@ -207,9 +212,9 @@ int main() {
     }
     GPIO_SETUP_INIT();
 
-    xQueue_USB_Out  = xQueueCreate(5, sizeof(Message_t*));
+    xQueue_USB_Out  = xQueueCreate(5, sizeof(TickType_t));
     xQueue_USB_In   = xQueueCreate(5, sizeof(uint32_t));
-    xQueueServo     = xQueueCreate(20, sizeof(Message_t*));
+    xQueueServo     = xQueueCreate(5, sizeof(Message_t*));
     h_mutex         = xSemaphoreCreateMutex();
 
     xTaskCreate(main_task,"main_task",400,NULL,configMAX_PRIORITIES-1,NULL);

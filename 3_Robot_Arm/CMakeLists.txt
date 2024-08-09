@@ -8,7 +8,6 @@ project(main C CXX ASM)
 set(CMAKE_C STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(PICO_SDK_FREERTOS_SOURCE ../FreeRTOS-LTS/FreeRTOS/FreeRTOS-Kernel)
-set(PICO_BOARD pico_w)
 
 pico_sdk_init()
 
@@ -33,11 +32,11 @@ target_include_directories(	FreeRTOS PUBLIC
 
 target_link_libraries(	${CMAKE_PROJECT_NAME}  
 						pico_stdlib
-						pico_cyw43_arch_none
 						hardware_gpio
 						hardware_adc
 						hardware_pwm
 						hardware_irq
+						hardware_uart
 						FreeRTOS)
 
 pico_add_extra_outputs(${CMAKE_PROJECT_NAME})

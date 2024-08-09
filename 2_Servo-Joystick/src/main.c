@@ -54,7 +54,7 @@ Servo_t mtrServoMid, mtrServoEnd, mtrServoBase;
 Message_t xServoMessage;
 PWM_t	pwm_1;
 
-static QueueHandle_t xQueue_USB_Out = NULL, xQueue_USB_In = NULL, xQueueServo = NULL;
+static QueueHandle_t xQueue_USB_Out = NULL, xQueue_UART_In = NULL, xQueueServo = NULL;
 static SemaphoreHandle_t h_mutex;
 
 const float adc_volt_per_unit = 3.3f/(1<<12); /*For ADC*/
@@ -78,26 +78,15 @@ int map(int s, int a1, int a2, int b1, int b2) {
  * UART0 --> Stdio USB
  * UART1 --> HC-05 Bluetooth
  *****************************************************/
-static void USBInputTask(void *args) {
-    (void)args;
-    int ch_buff = 0;
-    uint32_t val = 0;
-
-    while(true){
-        /*Create Non-Blocking getchar -> return PICO_ERROR_TIMEOUT = -1 if No Input*/
-        while ((ch_buff = getchar_timeout_us(100)) != '\n') {
-            if(ch_buff >= '0' && ch_buff <= '9'){
-                val = val*10 + ch_buff-'0';
-            }
+int getchar_timeout_us_uart(uint32_t timeout_us, uart_inst_t *uart) {
+    absolute_time_t t = make_timeout_time_us(timeout_us);
+    while (!uart_is_readable(uart)) {
+        if (absolute_time_diff_us(t, get_absolute_time()) > 0) {
+            return -1;
         }
-
-        mutex_lock();
-        printf("delay = %lu\n", val);
-        mutex_unlock();
-
-        xQueueSend(xQueue_USB_In, &val, 0U);
-        val = 0;
+        sleep_ms(1);
     }
+    return uart_getc(uart);
 }
 
 static void USBOutputTask(void *args) {
@@ -109,7 +98,6 @@ static void USBOutputTask(void *args) {
 
     while(true){
         t0 = xTaskGetTickCount();
-        xQueueReceive(xQueue_USB_In, &del, 0U);
         if(xQueueReceive(xQueue_USB_Out, &pxDuty, portMAX_DELAY) == pdTRUE){
             gpio_put(LED_PIN, out_led);
             out_led = !out_led;
@@ -122,13 +110,25 @@ static void USBOutputTask(void *args) {
     }
 }
 
-void UART1_Rx_Handler() {
-    while (uart_is_readable(UART_ID)) {
-        uint8_t ch = uart_getc(UART_ID);
-        if (uart_is_writable(UART_ID)) {
-            uart_putc(UART_ID, ch);
-            printf("%c", ch);
+void UART1_Rx_Handler(void *args) {
+    (void)args;
+    int ch_buff = 0;
+    uint32_t val = 0;
+
+    while(true){
+        /*Create Non-Blocking getchar -> return PICO_ERROR_TIMEOUT = -1 if No Input*/
+        while ((ch_buff = getchar_timeout_us_uart(100, uart1)) != '\n') {
+            if(ch_buff >= '0' && ch_buff <= '9'){
+                val = val*10 + ch_buff-'0';
+            }
         }
+
+        mutex_lock();
+        printf("uart val = %lu\n", val);
+        mutex_unlock();
+
+        xQueueSend(xQueue_UART_In, &val, 0U);
+        val = 0;
     }
 }
 
@@ -185,8 +185,8 @@ static void main_task(void *args) {
     while(true) {
         TickType_t t0 = xTaskGetTickCount();
 
-        /*Receive delay from USB*/
-        //xQueueReceive(xQueue_USB_In, &del, 0U);
+        /*Receive delay from UART*/
+        xQueueReceive(xQueue_UART_In, &del, 0U);
 
         /*Get Duty*/
         xServoMessage.base_duty = get_duty(&mtrServoBase, 0);
@@ -198,7 +198,8 @@ static void main_task(void *args) {
         xQueueSend(xQueue_USB_Out, &pxToxServoMessage, 0U);
         xQueueSend(xQueueServo, &pxToxServoMessage, 0U);
 
-        vTaskDelay(pdMS_TO_TICKS(10));
+        if(del <= 0) del = 1;
+        vTaskDelay(pdMS_TO_TICKS(del));
     }
 }
 
@@ -215,13 +216,7 @@ static void GPIO_SETUP_INIT(){
     int __unused actual = uart_set_baudrate(UART_ID, BAUD_RATE);
     uart_set_hw_flow(UART_ID, false, false);
     uart_set_format(UART_ID, DATA_BITS, STOP_BITS, PARITY);
-    
     uart_set_fifo_enabled(UART_ID, false);
-    int UART_IRQ = UART_ID == uart0 ? UART0_IRQ : UART1_IRQ;
-    irq_set_exclusive_handler(UART_IRQ, UART1_Rx_Handler);
-    irq_set_enabled(UART_IRQ, true);
-    uart_set_irq_enables(UART_ID, true, false);
-    uart_puts(UART_ID, "\nHello, uart interrupts\n");
 
     /*LED*/
     gpio_init(LED_PIN);
@@ -257,12 +252,12 @@ int main() {
     GPIO_SETUP_INIT();
 
     xQueue_USB_Out  = xQueueCreate(5, sizeof(Message_t*));
-    xQueue_USB_In   = xQueueCreate(5, sizeof(uint32_t));
+    xQueue_UART_In   = xQueueCreate(5, sizeof(uint32_t));
     xQueueServo     = xQueueCreate(20, sizeof(Message_t*));
     h_mutex         = xSemaphoreCreateMutex();
 
     xTaskCreate(main_task,"main_task",400,NULL,configMAX_PRIORITIES-1,NULL);
-    xTaskCreate(USBInputTask, "input_task",400,NULL,tskIDLE_PRIORITY,NULL);
+    xTaskCreate(UART1_Rx_Handler, "uart_task",400,NULL,tskIDLE_PRIORITY,NULL);
     xTaskCreate(USBOutputTask,"output_task",400,NULL,tskIDLE_PRIORITY,NULL);
 
     vTaskStartScheduler();

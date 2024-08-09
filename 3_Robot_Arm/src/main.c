@@ -2,11 +2,12 @@
 #include <string.h>
 /*Pico Lib*/
 #include "pico/stdlib.h"
-#include "pico/cyw43_arch.h"
 #include "hardware/gpio.h"
 #include "hardware/adc.h"
 #include "hardware/pwm.h"
 #include "hardware/irq.h"
+#include "hardware/uart.h"
+
 /*FreeRTOS Lib*/
 #include "FreeRTOS.h"
 #include "FreeRTOSConfig.h"
@@ -20,6 +21,8 @@
 #define mainECHO_TASK_PRIORITY	(tskIDLE_PRIORITY + 1)
 
 /*Hardware Setup*/
+/*Hardware Setup*/
+#define LED_PIN                 PICO_DEFAULT_LED_PIN
 #define TEMP_SENS_PIN           4
 #define SERVO_MID_PIN           18 /*PWM Channel 1A*/
 #define SERVO_END_PIN           20 /*PWM Channel 2A*/
@@ -27,6 +30,15 @@
 #define ADC_X_PIN               26 /*ADC 0*/
 #define ADC_Y_PIN               27 /*ADC 1*/
 #define ADC_SPEED_PIN           28 /*ADC 2*/
+
+/*UART 1: HC-05 Bluetooth*/
+#define UART_ID     uart1
+#define BAUD_RATE   9600
+#define DATA_BITS   8
+#define STOP_BITS   1
+#define PARITY      UART_PARITY_NONE
+#define UART_TX_PIN 4
+#define UART_RX_PIN 5
 
 typedef struct Message{
     float base_duty;
@@ -56,6 +68,17 @@ static void mutex_unlock(void) {
 
 int map(int s, int a1, int a2, int b1, int b2) {
     return b1 + (s - a1) * (b2 - b1) / (a2 - a1);
+}
+
+int getchar_timeout_us_uart(uint32_t timeout_us, uart_inst_t *uart) {
+    absolute_time_t t = make_timeout_time_us(timeout_us);
+    while (!uart_is_readable(uart)) {
+        if (absolute_time_diff_us(t, get_absolute_time()) > 0) {
+            return -1;
+        }
+        sleep_ms(1);
+    }
+    return uart_getc(uart);
 }
 
 void vHandlerServoIRQ(){
@@ -108,7 +131,7 @@ static void input_task(void *args) {
 
     while(true){
         /*Create Non-Blocking getchar -> return PICO_ERROR_TIMEOUT = -1 if No Input*/
-        while ((ch_buff = getchar_timeout_us(100)) != '\n') {
+        while ((ch_buff = getchar_timeout_us_uart(100, UART_ID)) != '\n') {
             if(ch_buff >= '0' && ch_buff <= '9'){
                 val = val*10 + ch_buff-'0';
             }
@@ -159,7 +182,7 @@ static void output_task(void *args) {
     while(true){
         t0 = xTaskGetTickCount();
         if(xQueueReceive(xQueue_USB_Out, &t_rx, portMAX_DELAY) == pdTRUE){
-            cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, out_led);
+            gpio_put(LED_PIN, out_led);
             out_led = !out_led;
 
             mutex_lock();
@@ -175,6 +198,24 @@ static void output_task(void *args) {
 }
 
 static void GPIO_SETUP_INIT(){
+      set_sys_clock_khz(125000, true);
+    
+    /*UART0 - USB*/
+    stdio_init_all(); 
+    
+    /*UART1 - HC-05*/
+    uart_init(UART_ID, BAUD_RATE);
+    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
+    int __unused actual = uart_set_baudrate(UART_ID, BAUD_RATE);
+    uart_set_hw_flow(UART_ID, false, false);
+    uart_set_format(UART_ID, DATA_BITS, STOP_BITS, PARITY);
+    uart_set_fifo_enabled(UART_ID, false);
+
+    /*LED*/
+    gpio_init(LED_PIN);
+    gpio_set_dir(LED_PIN, GPIO_OUT);
+
     /*ADC*/
     adc_init();
     adc_gpio_init(ADC_X_PIN);
@@ -206,10 +247,6 @@ int main() {
     set_sys_clock_khz(125000, true);
     
     stdio_init_all();
-    if (cyw43_arch_init()) {
-        printf("Wi-Fi init failed");
-        return -1;
-    }
     GPIO_SETUP_INIT();
 
     xQueue_USB_Out  = xQueueCreate(5, sizeof(TickType_t));

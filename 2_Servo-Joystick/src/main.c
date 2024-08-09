@@ -1,17 +1,21 @@
 #include <stdio.h>
 #include <string.h>
+
 /*Pico Lib*/
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/adc.h"
 #include "hardware/pwm.h"
 #include "hardware/irq.h"
+#include "hardware/uart.h"
+
 /*FreeRTOS Lib*/
 #include "FreeRTOS.h"
 #include "FreeRTOSConfig.h"
 #include "task.h"
 #include "semphr.h"
 #include "queue.h"
+
 /*Custom Lib*/
 #include "Servo.h"
 #include "PWMmgr.h"
@@ -21,12 +25,23 @@
 /*Hardware Setup*/
 #define LED_PIN             PICO_DEFAULT_LED_PIN
 #define TEMP_SENS_PIN       4
+
+/*Servo*/
 #define SERVO_MID_PIN       18 /*PWM Channel 1A*/
 #define SERVO_END_PIN       20 /*PWM Channel 2A*/
 #define SERVO_BASE_PIN      22 /*PWM Channel 3A*/
 #define ADC_X_PIN           26 /*ADC 0*/
 #define ADC_Y_PIN           27 /*ADC 1*/
 #define ADC_SPEED_PIN       28 /*ADC 2*/
+
+/*UART 1: HC-05 Bluetooth*/
+#define UART_ID     uart1
+#define BAUD_RATE   9600
+#define DATA_BITS   8
+#define STOP_BITS   1
+#define PARITY      UART_PARITY_NONE
+#define UART_TX_PIN 4
+#define UART_RX_PIN 5
 
 typedef struct Message{
     float base_duty;
@@ -58,7 +73,66 @@ int map(int s, int a1, int a2, int b1, int b2) {
     return b1 + (s - a1) * (b2 - b1) / (a2 - a1);
 }
 
-void vHandlerServoIRQ(){
+/*****************************************************
+ * Communication Section
+ * UART0 --> Stdio USB
+ * UART1 --> HC-05 Bluetooth
+ *****************************************************/
+static void USBInputTask(void *args) {
+    (void)args;
+    int ch_buff = 0;
+    uint32_t val = 0;
+
+    while(true){
+        /*Create Non-Blocking getchar -> return PICO_ERROR_TIMEOUT = -1 if No Input*/
+        while ((ch_buff = getchar_timeout_us(100)) != '\n') {
+            if(ch_buff >= '0' && ch_buff <= '9'){
+                val = val*10 + ch_buff-'0';
+            }
+        }
+
+        mutex_lock();
+        printf("delay = %lu\n", val);
+        mutex_unlock();
+
+        xQueueSend(xQueue_USB_In, &val, 0U);
+        val = 0;
+    }
+}
+
+static void USBOutputTask(void *args) {
+    (void)args;
+    TickType_t t0 = 0;
+    Message_t* pxDuty;
+    bool out_led = 1;
+    int del = 0;
+
+    while(true){
+        t0 = xTaskGetTickCount();
+        xQueueReceive(xQueue_USB_In, &del, 0U);
+        if(xQueueReceive(xQueue_USB_Out, &pxDuty, portMAX_DELAY) == pdTRUE){
+            gpio_put(LED_PIN, out_led);
+            out_led = !out_led;
+
+            mutex_lock();
+            printf("base_d:%.2f, mid_d:%.2f, end_d:%.2f, t:%lu\n",
+                    pxDuty->base_duty, pxDuty->mid_duty, pxDuty->end_duty, xTaskGetTickCount()-t0);
+            mutex_unlock();
+        }
+    }
+}
+
+void UART1_Rx_Handler() {
+    while (uart_is_readable(UART_ID)) {
+        uint8_t ch = uart_getc(UART_ID);
+        if (uart_is_writable(UART_ID)) {
+            uart_putc(UART_ID, ch);
+            printf("%c", ch);
+        }
+    }
+}
+
+void Servo_IRQ_Handler(){
     Message_t* pxDuty;
     if (xQueueReceive(xQueueServo, &pxDuty, 0U) == pdTRUE){
         pwm_clear_irq(mtrServoBase.slice);
@@ -102,28 +176,6 @@ float get_duty(Servo_t *s, uint8_t adc_pin){
     return pos;
 }
 
-static void input_task(void *args) {
-    (void)args;
-    int ch_buff = 0;
-    uint32_t val = 0;
-
-    while(true){
-        /*Create Non-Blocking getchar -> return PICO_ERROR_TIMEOUT = -1 if No Input*/
-        while ((ch_buff = getchar_timeout_us(100)) != '\n') {
-            if(ch_buff >= '0' && ch_buff <= '9'){
-                val = val*10 + ch_buff-'0';
-            }
-        }
-
-        mutex_lock();
-        printf("delay = %lu\n", val);
-        mutex_unlock();
-
-        xQueueSend(xQueue_USB_In, &val, 0U);
-        val = 0;
-    }
-}
-
 static void main_task(void *args) {
     /*It will be changed to ISR*/
     (void)args;
@@ -134,7 +186,7 @@ static void main_task(void *args) {
         TickType_t t0 = xTaskGetTickCount();
 
         /*Receive delay from USB*/
-        xQueueReceive(xQueue_USB_In, &del, 0U);
+        //xQueueReceive(xQueue_USB_In, &del, 0U);
 
         /*Get Duty*/
         xServoMessage.base_duty = get_duty(&mtrServoBase, 0);
@@ -146,34 +198,30 @@ static void main_task(void *args) {
         xQueueSend(xQueue_USB_Out, &pxToxServoMessage, 0U);
         xQueueSend(xQueueServo, &pxToxServoMessage, 0U);
 
-        vTaskDelay(pdMS_TO_TICKS(del));
-    }
-}
-
-static void output_task(void *args) {
-    (void)args;
-    TickType_t t0 = 0;
-    Message_t* pxDuty;
-    bool out_led = 1;
-
-    while(true){
-        t0 = xTaskGetTickCount();
-        if(xQueueReceive(xQueue_USB_Out, &pxDuty, portMAX_DELAY) == pdTRUE){
-            gpio_put(LED_PIN, out_led);
-            out_led = !out_led;
-
-            mutex_lock();
-            printf("base_d:%.2f, mid_d:%.2f, end_d:%.2f, t:%lu\n",
-                    pxDuty->base_duty, pxDuty->mid_duty, pxDuty->end_duty, xTaskGetTickCount()-t0);
-            mutex_unlock();
-        }
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
 static void GPIO_SETUP_INIT(){
     set_sys_clock_khz(125000, true);
-    /*Communication*/
-    stdio_init_all();
+    
+    /*UART0 - USB*/
+    stdio_init_all(); 
+    
+    /*UART1 - HC-05*/
+    uart_init(UART_ID, BAUD_RATE);
+    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
+    int __unused actual = uart_set_baudrate(UART_ID, BAUD_RATE);
+    uart_set_hw_flow(UART_ID, false, false);
+    uart_set_format(UART_ID, DATA_BITS, STOP_BITS, PARITY);
+    
+    uart_set_fifo_enabled(UART_ID, false);
+    int UART_IRQ = UART_ID == uart0 ? UART0_IRQ : UART1_IRQ;
+    irq_set_exclusive_handler(UART_IRQ, UART1_Rx_Handler);
+    irq_set_enabled(UART_IRQ, true);
+    uart_set_irq_enables(UART_ID, true, false);
+    uart_puts(UART_ID, "\nHello, uart interrupts\n");
 
     /*LED*/
     gpio_init(LED_PIN);
@@ -197,7 +245,7 @@ static void GPIO_SETUP_INIT(){
     pwm_clear_irq(mtrServoBase.slice);
     pwm_clear_irq(mtrServoEnd.slice);
     pwm_set_irq_mask_enabled(pwm_slice_mask, true);
-    irq_set_exclusive_handler(PWM_IRQ_WRAP, vHandlerServoIRQ);
+    irq_set_exclusive_handler(PWM_IRQ_WRAP, Servo_IRQ_Handler);
     irq_set_enabled(PWM_IRQ_WRAP, true);
 
     vServo_on(&mtrServoMid);
@@ -214,8 +262,8 @@ int main() {
     h_mutex         = xSemaphoreCreateMutex();
 
     xTaskCreate(main_task,"main_task",400,NULL,configMAX_PRIORITIES-1,NULL);
-    xTaskCreate(input_task,"input_task",400,NULL,tskIDLE_PRIORITY,NULL);
-    xTaskCreate(output_task,"output_task",400,NULL,tskIDLE_PRIORITY,NULL);
+    xTaskCreate(USBInputTask, "input_task",400,NULL,tskIDLE_PRIORITY,NULL);
+    xTaskCreate(USBOutputTask,"output_task",400,NULL,tskIDLE_PRIORITY,NULL);
 
     vTaskStartScheduler();
 

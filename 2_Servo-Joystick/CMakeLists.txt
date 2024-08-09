@@ -36,8 +36,9 @@ target_link_libraries(	${CMAKE_PROJECT_NAME}
 						hardware_adc
 						hardware_pwm
 						hardware_irq
+						hardware_uart
 						FreeRTOS)
 
 pico_add_extra_outputs(${CMAKE_PROJECT_NAME})
-pico_enable_stdio_usb(${CMAKE_PROJECT_NAME} 0)
-pico_enable_stdio_uart(${CMAKE_PROJECT_NAME} 1)
+pico_enable_stdio_usb(${CMAKE_PROJECT_NAME} 1)
+pico_enable_stdio_uart(${CMAKE_PROJECT_NAME} 0)
